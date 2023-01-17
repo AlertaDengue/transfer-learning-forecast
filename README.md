@@ -4,10 +4,10 @@ This study is an updated version of this work (available in pre-print): https://
 
 In this work, we applied the transfer learning technique to predict the chikungunya cases using a model trained to predict the dengue cases. We applied this methodology to four Brazilian cities: 
 
-* Recife - PE;
-* João Pessoa - PB; 
-* Rio de Janeiro - RJ;
-* Fortaleza - CE. 
+* Recife - PE (code associated with the city: 2611606);
+* João Pessoa - PB (code associated with the city: 2507507); 
+* Rio de Janeiro - RJ (code associated with the city: 3304557);
+* Fortaleza - CE (code associated with the city: 2304400). 
 
 Our repo is organized as follows:
 
