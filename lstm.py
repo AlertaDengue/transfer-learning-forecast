@@ -61,41 +61,6 @@ def calculate_metrics(pred, y_true, factor):
         metrics[col] = l
     return metrics
 
-def custom_loss_msle(p = 1):
-    """
-    :param p: weight given to a slice of the data when the function is applied. 
-
-    """
-    
-    def my_loss_msle(y_true, y_pred):
-        """
-        :param y_true: 
-        :param y_pred: 
-        """
-
-        def f1(): 
-            
-            loss = tf.math.log(tf.math.add(y_true, 1)/ tf.math.add(y_pred, 1))
-    
-            loss = tf.square(loss)
-        
-            return tf.multiply(loss, p) 
-        
-        def f2(): 
-            
-            loss = tf.math.log(tf.math.add(y_true, 1)/ tf.math.add(y_pred, 1))
-    
-            loss = tf.square(loss)
-        
-            return loss
-
-        msle = tf.cond(tf.less(tf.gather(y_true, 0)[1],tf.gather(y_true, 0)[3]) , 
-                                     true_fn = f1,
-                                     false_fn = f2 )
-
-        return tf.reduce_mean(msle) 
-    
-    return my_loss_msle 
 
 def build_model(hidden, features, predict_n, look_back=10, batch_size=1, loss = 'msle'):
     """
@@ -258,7 +223,7 @@ def make_pred(model, city, doenca,  epochs, ini_date = None, end_train_date = No
                                                     ratio = ratio, look_back = look_back,
                                                     predict_n = predict_n, filename = filename)
    
-    model, hist, m_train, m_val =  train(model, X_train, Y_train, label = label, batch_size=1, epochs=epochs, geocode=city, overwrite=True, validation_split = 0.15, monitor = 'val_loss')
+    model, hist, m_train, m_val =  train(model, X_train, Y_train, label = label, batch_size=1, epochs=epochs, geocode=city, overwrite=True, validation_split = 0.15, monitor = 'loss')
    
     pred = evaluate(model, X_pred)
 
@@ -428,7 +393,7 @@ def transf_chik_pred(model, city, ini_date = '2021-01-01', end_train_date = '202
     model.set_weights(weights = base_model.get_weights())        
     
     model, hist, metrics_train, metrics_val  = train(model = model, X_train = X_train, Y_train = Y_train, label = label,  epochs=epochs, geocode= city, overwrite=True,
-         validation_split = validation_split, patience = 5)
+         validation_split = validation_split, patience = 10)
 
     pred = evaluate(model, X_pred)
 

@@ -106,8 +106,12 @@ def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, r
     df.index = pd.to_datetime(df.index)  
 
     target_col = list(df.columns).index("casos_est_{}".format(city))
-    
-    df[f'casos_est_{city}_diff'] = np.concatenate(([np.nan], np.diff(df[f'casos_est_{city}'], 1)), axis = 0)
+
+    for i in df.columns:
+
+        if i.startswith('casos_est'):
+
+            df[f'diff_{i}'] = np.concatenate(([np.nan], np.diff(df[f'{i}'], 1)), axis = 0)
     
     df = df.dropna()
 

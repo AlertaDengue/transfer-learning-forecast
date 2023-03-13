@@ -14,11 +14,20 @@ def ss(forecast, reference, target):
 
 def conf_ss(forecast, reference, target):
     
-    rmse_f = abs(forecast-target)
+    #rmse_f = abs(forecast-target)
+
+    rmse_f = []
+    for i in np.arange(1, len(forecast)):
+
+        rmse_f.append(mse(target[:i], forecast[:i], squared = False))
+
+    #rmse_r = abs(reference - target)
+    rmse_r = []
+    for i in np.arange(1, len(reference)):
+
+        rmse_r.append(mse(target[:i], reference[:i], squared = False))
     
-    rmse_r = abs(reference - target)
-    
-    ss = 1 - (rmse_f/rmse_r)
+    ss = 1 - (np.array(rmse_f)/np.array(rmse_r))
 
     #convert array to sequence
     ss = (ss,)
@@ -74,6 +83,29 @@ def conf_all_models(data_nn, data_ml, data_tl, ini_evaluate, end_evaluate):
     print('---------------------------')
 
     return 
+
+def conf_all_models_values(data_nn, data_ml, data_tl, ini_evaluate, end_evaluate): 
+
+    ini_index = data_nn['indice'].index(datetime.strptime(ini_evaluate, '%Y-%m-%d'))
+    end_index = data_nn['indice'].index(datetime.strptime(end_evaluate, '%Y-%m-%d'))
+
+    ini_index_ml = data_ml['dates'].index(datetime.strptime(ini_evaluate, '%Y-%m-%d'))
+    end_index_ml = data_ml['dates'].index(datetime.strptime(end_evaluate, '%Y-%m-%d'))
+
+    NN_ss_ML = conf_ss( target = data_nn['target'][ini_index - 7: end_index - 7, -1] * data_nn['factor'],
+                                forecast =  data_nn['pred'].iloc[ini_index - 7: end_index - 7, -1] * data_nn['factor'],
+                                reference = data_ml['preds'][ini_index_ml:end_index_ml] )
+
+
+    TL_ss_NN = conf_ss( target = data_tl['target'][ini_index - 7: end_index - 7, -1] * data_tl['factor'],
+                              forecast =  data_tl['pred'].iloc[ini_index - 7: end_index - 7, -1] * data_tl['factor'],
+                              reference =data_nn['pred'].iloc[ini_index - 7: end_index - 7, -1] * data_nn['factor'])
+
+    TL_ss_ML = conf_ss( target = data_tl['target'][ini_index - 7: end_index - 7, -1] * data_tl['factor'],
+                                forecast =  data_tl['pred'].iloc[ini_index - 7: end_index - 7, -1] * data_tl['factor'],
+                                reference =data_ml['preds'][ini_index_ml:end_index_ml] )
+
+    return NN_ss_ML, TL_ss_NN, TL_ss_ML
 
 
 def ss_all_models(data_nn, data_ml, data_tl, ini_evaluate, end_evaluate): 
@@ -142,3 +174,7 @@ def plot_comp(data_nn, data_ml, data_tl, ini_evaluate, end_evaluate):
     plt.legend()
     plt.xticks(rotation=45)
     plt.show()
+
+    print('RMSE - ML:', mse( data_nn['target'][ini_index - 7: end_index - 7, -1] * data_nn['factor'], data_ml['preds'][ini_index_ml: end_index_ml] , squared = False))
+    print('RMSE - NN:', mse( data_nn['target'][ini_index - 7: end_index - 7, -1] * data_nn['factor'], data_nn['pred'].iloc[ini_index - 7: end_index - 7,-1] * data_nn['factor'] , squared = False))
+    print('RMSE - TL:', mse( data_nn['target'][ini_index - 7: end_index - 7, -1] * data_nn['factor'], data_tl['pred'].iloc[ini_index - 7: end_index - 7,-1] * data_tl['factor'] , squared = False))
