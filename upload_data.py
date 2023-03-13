@@ -85,9 +85,32 @@ def get_temperature_data(municipio=None):
                                conexao, index_col='id')
     else:
         df = pd.read_sql_query(
-            'select cwu.id, temp_min, temp_max, umid_min, pressao_min, data_dia FROM "Municipio"."Clima_wu" cwu JOIN "Dengue_global".regional_saude rs ON cwu."Estacao_wu_estacao_id"=rs.codigo_estacao_wu WHERE rs.municipio_geocodigo={} ORDER BY data_dia ASC;'.format(
+            'select cwu.id, temp_min, temp_max, umid_min, umid_max, pressao_min, pressao_max, data_dia FROM "Municipio"."Clima_wu" cwu JOIN "Dengue_global".regional_saude rs ON cwu."Estacao_wu_estacao_id"=rs.codigo_estacao_wu WHERE rs.municipio_geocodigo={} ORDER BY data_dia ASC;'.format(
                 municipio), conexao, index_col='id')
     df.data_dia = pd.to_datetime(df.data_dia)
+    df.set_index('data_dia', inplace=True)
+    conexao.dispose()
+    return df
+
+
+def get_temperature_copernicus(municipio=None):
+    """
+    Fecth dataframe with temperature time series for a given city
+    :param municipio: geocode of the city
+    :return: pandas dataframe
+    """
+    conexao = make_connection()
+
+    if municipio is None:
+        df = pd.read_sql_query('select * from "weather"."copernicus_brasil" ORDER BY "time" ASC;',
+                               conexao, index_col='index')
+    else:
+        df = pd.read_sql_query(
+            'select  index, time, temp_min, temp_max, umid_min, umid_max, pressao_min, pressao_max FROM "weather"."copernicus_brasil" WHERE geocodigo={} ORDER BY "time" ASC;'.format(
+                municipio), conexao, index_col='index')
+        
+    df = df.rename(columns = {'time': 'data_dia'})
+    df.data_dia  = pd.to_datetime(df.data_dia)
     df.set_index('data_dia', inplace=True)
     conexao.dispose()
     return df
@@ -184,7 +207,7 @@ def combined_data(municipio, data_types, doenca='dengue'):
         to_concat.append(alerta_table)
 
     if 'weather' in data_types:
-        weather = get_temperature_data(municipio)
+        weather = get_temperature_copernicus(municipio)
         weather = weather.resample('W').apply(np.nanmean)
         to_concat.append(weather)
 
