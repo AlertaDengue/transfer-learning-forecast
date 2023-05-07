@@ -3,8 +3,87 @@ import pandas as pd
 import seaborn as sns
 import scipy.stats as ss
 from matplotlib import pyplot as P
+import matplotlib.pyplot as plt 
 
 MAIN_FOLDER = '../..'
+
+
+def plot_train(ax, indice, Ydata, factor, df_predicted, df_predicted25, df_predicted975, split_point, label):
+    
+    if (type(factor) == np.float64):
+        
+        ax.plot(indice[len(indice)-Ydata.shape[0]:split_point +len(indice)-Ydata.shape[0]], Ydata[:split_point, -1] * factor, 'k-', alpha=0.7, label='data')
+        ax.plot(indice[len(indice)-Ydata.shape[0]:split_point + len(indice)-Ydata.shape[0] ], df_predicted.iloc[:split_point,-1] * factor, 'r-', alpha=0.5, label='median')
+        
+
+        ax.fill_between(indice[len(indice)-Ydata.shape[0]:split_point+len(indice)-Ydata.shape[0]], df_predicted25[df_predicted25.columns[-1]][:split_point] * factor,
+                       df_predicted975[df_predicted975.columns[-1]][:split_point] * factor,
+                       color='b', alpha=0.3)
+        
+    else: 
+
+        ax.plot(indice[len(indice)-Ydata.shape[0]:split_point +len(indice)-Ydata.shape[0]], factor.inverse_transform(Ydata[:split_point, -1].reshape(-1,1)).reshape(-1) , 'k-', alpha=0.7, label='data')
+        ax.plot(indice[len(indice)-Ydata.shape[0]:split_point + len(indice)-Ydata.shape[0] ], factor.inverse_transform(df_predicted.iloc[:split_point,-1].values.reshape(-1,1)).reshape(-1), 'r-', alpha=0.5, label='median')
+        
+
+        ax.fill_between(indice[len(indice)-Ydata.shape[0]:split_point+len(indice)-Ydata.shape[0]], factor.inverse_transform(df_predicted25[df_predicted25.columns[-1]][:split_point].values.reshape(-1,1)).reshape(-1),
+                       factor.inverse_transform(df_predicted975[df_predicted975.columns[-1]][:split_point].values.reshape(-1,1)).reshape(-1),
+                       color='b', alpha=0.3)
+
+    ax.grid()
+    ax.legend()
+    ax.set_title(f'Train - {label}')
+    ax.set_xlabel("time")
+    ax.set_ylabel("incidence")
+    for tick in ax.get_xticklabels():
+        tick.set_rotation(45)
+
+def plot_test(ax, indice, Ydata, factor, df_predicted, df_predicted25, df_predicted975, split_point, label):
+
+    if (type(factor) == np.float64): 
+    
+        ax.plot(indice[split_point + len(indice)-Ydata.shape[0]:], Ydata[split_point:, -1] * factor, 'k-', alpha=0.7, label='data')
+        ax.plot(indice[split_point+ len(indice)-Ydata.shape[0]:], df_predicted.iloc[split_point:,-1] * factor, 'r-', alpha=0.5, label='median')
+        
+
+        ax.fill_between(indice[split_point + len(indice)-Ydata.shape[0]:], df_predicted25[df_predicted25.columns[-1]][split_point:] * factor,
+                        df_predicted975[df_predicted975.columns[-1]][split_point:] * factor,
+                        color='b', alpha=0.3)
+        
+    else: 
+
+        ax.plot(indice[split_point + len(indice)-Ydata.shape[0]:], factor.inverse_transform(Ydata[split_point:, -1].reshape(-1,1)).reshape(-1), 'k-', alpha=0.7, label='data')
+        ax.plot(indice[split_point+ len(indice)-Ydata.shape[0]:], factor.inverse_transform(df_predicted.iloc[split_point:,-1].values.reshape(-1,1)).reshape(-1), 'r-', alpha=0.5, label='median')
+        
+
+        ax.fill_between(indice[split_point + len(indice)-Ydata.shape[0]:], factor.inverse_transform(df_predicted25[df_predicted25.columns[-1]][split_point:].values.reshape(-1,1)).reshape(-1),
+                        factor.inverse_transform(df_predicted975[df_predicted975.columns[-1]][split_point:].values.reshape(-1,1)).reshape(-1),
+                        color='b', alpha=0.3)
+        
+
+
+    ax.grid()
+    ax.legend()
+    ax.set_title(f'Test - {label}')
+    ax.set_xlabel("time")
+    ax.set_ylabel("incidence")
+    for tick in ax.get_xticklabels():
+        tick.set_rotation(45)
+
+
+def plot_train_test(indice, Ydata, factor, df_predicted, df_predicted25, df_predicted975, split_point, label):
+
+    fig, ax = plt.subplots(1,2, figsize=(12,4.5))
+
+    plot_train(ax[0], indice, Ydata, factor, df_predicted, df_predicted25, df_predicted975, split_point, label)
+
+    plot_test(ax[1], indice, Ydata, factor, df_predicted, df_predicted25, df_predicted975, split_point, label)
+
+    plt.savefig(f'{MAIN_FOLDER}/plots/lstm/{label}.png',bbox_inches='tight',  dpi = 300)
+
+    plt.show()
+
+    return 
 
 def plot_predicted_vs_data(predicted, Ydata, indice, label, pred_window, factor, split_point=None, uncertainty=False, label_name = 'predict'):
     """
