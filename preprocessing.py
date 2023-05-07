@@ -67,10 +67,11 @@ def split_data(df, look_back=12, ratio=0.8, predict_n=5, Y_column=0):
     return X_train, Y_train, X_test, Y_test
 
 
-def normalize_data(df, log_transform=False):
+def normalize_data(df, log_transform=False, ratio = 0.75, end_train_date = None):
     """
     Normalize features in the example table
     :param df:
+    :param ratio: defines the size of the training dataset 
     :return:
     """
 
@@ -83,13 +84,22 @@ def normalize_data(df, log_transform=False):
             le = LabelEncoder()
             le.fit(df[col])
             df[col] = le.transform(df[col])
+
     df.fillna(0, inplace=True)
-    norm = normalize(df, norm='max', axis=0)
+    if ratio != None:
+        norm, norm_weights = normalize(df.iloc[:int(df.shape[0]*ratio)], norm='max', axis=0, return_norm = True)
+        
+    else:
+        norm, norm_weights = normalize(df.loc[df.index <= f'{end_train_date}'], norm='max', axis=0, return_norm = True)
+        
+
+    df_norm = df.divide(norm_weights, axis='columns')
+
     if log_transform==True:
-        norm = np.log(norm)
-    df_norm = pd.DataFrame(norm, columns=df.columns)
+        df_norm = np.log(df_norm)
 
     return df_norm, df.max(axis=0)
+
 
 def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, ratio = 0.75, look_back = 4, predict_n = 4, filename = None ):
     """
@@ -105,11 +115,11 @@ def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, r
     df = pd.read_csv(filename, index_col = 'Unnamed: 0' )
     df.index = pd.to_datetime(df.index)  
 
-    target_col = list(df.columns).index("casos_est_{}".format(city))
+    target_col = list(df.columns).index("casos_{}".format(city))
 
     for i in df.columns:
 
-        if i.startswith('casos_est'):
+        if i.startswith('casos_'):
 
             df[f'diff_{i}'] = np.concatenate(([np.nan], np.diff(df[f'{i}'], 1)), axis = 0)
     
@@ -121,10 +131,11 @@ def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, r
     if end_date != None:
         df = df.loc[:end_date]
 
-    norm_df, max_features = normalize_data(df)
-    factor = max_features[target_col]
-
     if end_train_date == None: 
+        
+        norm_df, max_features = normalize_data(df, ratio = ratio)
+        factor = max_features[target_col]
+    
 
         X_train, Y_train, X_test, Y_test = split_data(
                 norm_df,
@@ -140,10 +151,13 @@ def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, r
         Y_pred = np.concatenate((Y_train, Y_test), axis = 0)
 
     else:
+        norm_df, max_features = normalize_data(df, ratio = None, end_train_date = end_train_date)
+        print(norm_df.index[0])
+        factor = max_features[target_col]
         # end_train_date needs to be lower than end_date, otherwise we will get an error in the value inside loc 
         if datetime.strptime(end_train_date, '%Y-%m-%d') < datetime.strptime(end_date, '%Y-%m-%d'):
             X_train, Y_train, X_test, Y_test = split_data(
-                    norm_df.loc[:np.where(df.index <= end_train_date)[0][-1]],
+                    norm_df.loc[norm_df.index <= end_train_date],
                     look_back= look_back,
                     ratio=1,
                     predict_n = predict_n, 
@@ -158,9 +172,10 @@ def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, r
                     ratio=1,
                     predict_n = predict_n, 
                     Y_column=target_col,
-            )
+            ) 
 
     return df,factor,  X_train, Y_train, X_pred, Y_pred
+
 
 
 def get_ml_data(city, ini_date, end_train_date, end_date, ratio, predict_n, look_back, filename = None):

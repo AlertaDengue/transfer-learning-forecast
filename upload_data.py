@@ -29,6 +29,21 @@ def get_city_names(geocodigos):
         res = res.fetchall()
 
     return res
+
+
+def data_cop(municipio):
+    
+    conexao = make_connection()
+    
+    df = pd.read_sql_query(
+            'select  date, temp_min, temp_max, umid_min, umid_max, pressao_min, pressao_max FROM "weather"."copernicus_brasil" WHERE geocodigo={} ORDER BY "date" ASC;'.format(
+                municipio), conexao, index_col='date')
+
+
+    df.index = pd.to_datetime(df.index)
+    
+    return df 
+        
     
 
 
@@ -102,14 +117,14 @@ def get_temperature_copernicus(municipio=None):
     conexao = make_connection()
 
     if municipio is None:
-        df = pd.read_sql_query('select * from "weather"."copernicus_brasil" ORDER BY "time" ASC;',
+        df = pd.read_sql_query('select * from "weather"."copernicus_brasil" ORDER BY "date" ASC;',
                                conexao, index_col='index')
     else:
         df = pd.read_sql_query(
-            'select  index, time, temp_min, temp_max, umid_min, umid_max, pressao_min, pressao_max FROM "weather"."copernicus_brasil" WHERE geocodigo={} ORDER BY "time" ASC;'.format(
+            'select  index, date, temp_min, temp_max, umid_min, umid_max, pressao_min, pressao_max FROM "weather"."copernicus_brasil" WHERE geocodigo={} ORDER BY "date" ASC;'.format(
                 municipio), conexao, index_col='index')
         
-    df = df.rename(columns = {'time': 'data_dia'})
+    df = df.rename(columns = {'date': 'data_dia'})
     df.data_dia  = pd.to_datetime(df.data_dia)
     df.set_index('data_dia', inplace=True)
     conexao.dispose()
@@ -194,7 +209,7 @@ def build_multicity_dataset(state, cols=None, doenca='dengue') -> pd.DataFrame:
     return full_data
 
 
-def combined_data(municipio, data_types, doenca='dengue'):
+def combined_data(municipio, data_types, doenca='dengue', temp = 'cop'):
     """
     Returns combined dataframe with incidence, tweets, and temperature for a city
     :param municipio: geocode
@@ -207,7 +222,10 @@ def combined_data(municipio, data_types, doenca='dengue'):
         to_concat.append(alerta_table)
 
     if 'weather' in data_types:
-        weather = get_temperature_copernicus(municipio)
+        if temp == 'cop':
+            weather = get_temperature_copernicus(municipio)
+        else:
+            weather = get_temperature_data(municipio)
         weather = weather.resample('W').apply(np.nanmean)
         to_concat.append(weather)
 
@@ -220,7 +238,7 @@ def combined_data(municipio, data_types, doenca='dengue'):
     return full_data
 
 
-def get_cluster_data(geocode, clusters, data_types, cols=None, save=False, doenca='dengue'):
+def get_cluster_data(geocode, clusters, data_types, cols=None, save=False, doenca='dengue', temp = 'cop'):
     """
     Returns the concatenated wide format table of all the variables in the cluster of a city.
     :param geocode: 7-digit geocode
@@ -230,13 +248,13 @@ def get_cluster_data(geocode, clusters, data_types, cols=None, save=False, doenc
     :return: Pandas DataFrame
     """
     try:
-        cluster = list(filter(lambda x: geocode in x, clusters))[0]
+        cluster = list(filter(lambda x: str(geocode) in x, clusters))[0]
     except IndexError as e:
         cluster = [geocode]
 
     full_data = pd.DataFrame()
     for city_code in cluster:
-        tmp = combined_data(city_code, data_types, doenca=doenca)
+        tmp = combined_data(city_code, data_types, doenca=doenca, temp = temp)
         if cols is not None:
             tmp = tmp[cols]
         tmp.columns = ['{}_{}'.format(col, city_code) for col in tmp.columns.values]
@@ -307,3 +325,13 @@ def random_data(N, state, cols=None, city=None, doenca='dengue'):
         full_data = pd.concat([tmp, full_data], axis=1).fillna(method='ffill')
 
     return full_data, random_group
+
+
+geocodes = {
+    'CE': ['2302008', '2302107', '2303709', '2304285', '2306256', '2304400',
+              '2302800', '2309458', '2307650'],
+    'PB': ['2502151', '2505105', '2507507', '2510303', '2512408', '2516300'],
+    'PE': ['2600054', '2609600', '2610707', '2611606', '2611002'], 
+    'RJ': ['3303203', '3302270', '3302858', '3304144', '3304151', '3305554',
+              '3304557']
+}

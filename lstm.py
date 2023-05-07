@@ -6,17 +6,17 @@ import tensorflow as tf
 import tensorflow.keras as keras
 from preprocessing import get_nn_data
 from tensorflow.keras.layers import LSTM
-from plots_lstm import plot_predicted_vs_data
+from plots_lstm import plot_train_test
 from tensorflow.keras.utils import plot_model
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.layers import Dense, Dropout, Bidirectional
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping
 from sklearn.metrics import mean_absolute_error, explained_variance_score, mean_squared_error, mean_squared_log_error, median_absolute_error, r2_score
-
+from tensorflow.keras import regularizers
 
 MAIN_FOLDER = '../..'
 
-def evaluate(model, Xdata, uncertainty=True):
+def evaluate(model, Xdata, batch_size,  uncertainty=True):
     """
     Function to make the predictions of the model trained 
     :param model: Trained lstm model 
@@ -25,9 +25,9 @@ def evaluate(model, Xdata, uncertainty=True):
                         one prediction is returned. 
     """
     if uncertainty:
-        predicted = np.stack([model.predict(Xdata, batch_size=1, verbose=0) for i in range(100)], axis=2)
+        predicted = np.stack([model.predict(Xdata, batch_size=batch_size, verbose=0) for i in range(100)], axis=2)
     else:
-        predicted = model.predict(Xdata, batch_size=1, verbose=0)
+        predicted = model.predict(Xdata, batch_size=batch_size, verbose=0)
     return predicted
 
 def calculate_metrics(pred, y_true, factor):
@@ -62,7 +62,7 @@ def calculate_metrics(pred, y_true, factor):
     return metrics
 
 
-def build_model(hidden, features, predict_n, look_back=10, batch_size=1, loss = 'msle'):
+def build_model(l1, l2, hidden, features, predict_n, look_back=10, batch_size=1, loss = 'msle', lr = 0.005):
     """
     Builds and returns the LSTM model with the parameters given
     :param hidden: int.number of hidden nodes
@@ -73,6 +73,9 @@ def build_model(hidden, features, predict_n, look_back=10, batch_size=1, loss = 
     :param loss: string or function. Loss function to be used in the training process. 
     :return:
     """
+    
+ 
+    
     inp = keras.Input(
         shape=(look_back, features),
         # batch_shape=(batch_size, look_back, features)
@@ -84,7 +87,10 @@ def build_model(hidden, features, predict_n, look_back=10, batch_size=1, loss = 
         stateful=False,
         batch_input_shape=(batch_size, look_back, features),
         return_sequences=True,
-        #activation='relu',
+        kernel_regularizer=regularizers.L1L2(l1=l1, l2=l2),
+        bias_regularizer=regularizers.L2(l2),
+        #activity_regularizer=regularizers.L2(1e-5), 
+        #activation='tanh',
         dropout=0.1,
         recurrent_dropout=0.1,
         implementation=2,
@@ -99,7 +105,10 @@ def build_model(hidden, features, predict_n, look_back=10, batch_size=1, loss = 
         stateful=False,
         batch_input_shape=(batch_size, look_back, features),
         return_sequences= False,
-        #activation='relu',
+        kernel_regularizer=regularizers.L1L2(l1=l1, l2=l2),
+        bias_regularizer=regularizers.L2(l2),
+        #activity_regularizer=regularizers.L2(1e-5), 
+        #activation='tanh',
         dropout=0.1,
         recurrent_dropout=0.1,
         implementation=2,
@@ -111,6 +120,7 @@ def build_model(hidden, features, predict_n, look_back=10, batch_size=1, loss = 
     out = Dense(
         predict_n,
         activation="relu",
+        activity_regularizer=regularizers.L2(l2), 
         kernel_initializer="random_uniform",
         bias_initializer="zeros",
         name = 'dense'
@@ -118,14 +128,101 @@ def build_model(hidden, features, predict_n, look_back=10, batch_size=1, loss = 
     model = keras.Model(inp, out)
 
     start = time()
-    model.compile(loss = loss, optimizer="adam", metrics=["accuracy", "mape", "mse"])
+    optimizer = keras.optimizers.Adam(learning_rate = lr)
+    #optimizer = tf.keras.optimizers.experimental.SGD(learning_rate=0.0001)
+
+    model.compile(loss = loss, optimizer=optimizer, metrics=["accuracy", "mape", "mse"])
     print("Compilation Time : ", time() - start)
     plot_model(model, to_file="LSTM_model.png")
     print(model.summary())
     return model
 
 
-def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None, overwrite=True, validation_split = 0.25, patience = 20, monitor = 'loss'):
+def transf_model(filename, l1, l2, hidden, features, predict_n, look_back=10, batch_size=1, loss = 'msle', lr = 0.005):
+
+    inp = keras.Input(
+        shape=(look_back, features),
+        # batch_shape=(batch_size, look_back, features)
+    )
+    
+    x = Bidirectional(LSTM(
+        hidden,
+        input_shape=(look_back, features),
+        stateful=False,
+        batch_input_shape=(batch_size, look_back, features),
+        return_sequences=True,
+        kernel_regularizer=regularizers.L1L2(l1=l1, l2=l2),
+        bias_regularizer=regularizers.L2(l2),
+        #activity_regularizer=regularizers.L2(1e-5), 
+        #activation='tanh',
+        dropout=0.1,
+        recurrent_dropout=0.1,
+        implementation=2,
+        unit_forget_bias=True,
+    ), merge_mode = 'ave', name = 'bidirectional_1')(inp, training=True)     
+
+    x = Dropout(0.2, name='dropout_1')(x, training=True)
+    
+    x = LSTM(
+        hidden,
+        input_shape=(look_back, features),
+        stateful=False,
+        batch_input_shape=(batch_size, look_back, features),
+        return_sequences= False,
+        kernel_regularizer=regularizers.L1L2(l1=l1, l2=l2),
+        bias_regularizer=regularizers.L2(l2),
+        #activity_regularizer=regularizers.L2(1e-5), 
+        #activation='tanh',
+        dropout=0.1,
+        recurrent_dropout=0.1,
+        implementation=2,
+        unit_forget_bias=True, name='lstm_1'
+    )(x, training=True)
+
+    x = Dropout(0.2, name = 'dropout_2')(x, training=True)
+
+    out = Dense(
+        predict_n,
+        activation="relu",
+        activity_regularizer=regularizers.L2(l2), 
+        kernel_initializer="random_uniform",
+        bias_initializer="zeros",
+        name = 'dense'
+    )(x)
+    model = keras.Model(inp, out)
+
+    base_model = keras.models.load_model(filename, compile = True)
+
+    model.set_weights(weights = base_model.get_weights())        
+
+    #model.trainable = False  # Freeze the outer model
+
+    #for layer in model.layers : 
+     #   name = layer.name
+
+      #  if (name == 'dense'):
+
+       #     model.get_layer(name).trainable = True
+
+        #else: 
+
+         #   model.get_layer(name).trainable = False
+
+
+    start = time()
+    optimizer = keras.optimizers.Adam(learning_rate = lr)
+    #optimizer = tf.keras.optimizers.experimental.SGD(learning_rate=0.0001)
+
+    model.compile(loss = loss, optimizer=optimizer, metrics=["accuracy", "mape", "mse"])
+    print("Compilation Time : ", time() - start)
+    plot_model(model, to_file="LSTM_model.png")
+    print(model.summary())
+    return model
+
+
+    
+
+def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None, overwrite=True, validation_split = 0.25, patience = 50, monitor = 'val_loss'):
     """
     Train the lstm model 
     :param model: LSTM model compiled and created with the build_model function 
@@ -166,8 +263,8 @@ def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None,
         model.save(f"{MAIN_FOLDER}/saved_models/lstm/trained_{geocode}_model_{label}.h5", overwrite=overwrite)
 
 
-        pred_train = np.percentile(np.stack([model.predict(X_train, batch_size=1, verbose=0) for i in range(100)], axis=2), 50, axis=2)
-        pred_test = np.percentile(np.stack([model.predict(X_test, batch_size=1, verbose=0) for i in range(100)], axis=2), 50, axis=2)
+        pred_train = np.percentile(np.stack([model.predict(X_train, batch_size=batch_size, verbose=0) for i in range(100)], axis=2), 50, axis=2)
+        pred_test = np.percentile(np.stack([model.predict(X_test, batch_size=batch_size, verbose=0) for i in range(100)], axis=2), 50, axis=2)
 
         
         metrics_train = calculate_metrics(pred_train, Y_train, 1)
@@ -188,7 +285,7 @@ def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None,
         model.save(f"{MAIN_FOLDER}/saved_models/lstm/trained_{geocode}_model_{label}.h5", overwrite=overwrite)
 
 
-        pred_train = np.percentile(np.stack([model.predict(X_train, batch_size=1, verbose=0) for i in range(100)], axis=2), 50, axis=2)
+        pred_train = np.percentile(np.stack([model.predict(X_train, batch_size=batch_size, verbose=0) for i in range(100)], axis=2), 50, axis=2)
         
         metrics_train = calculate_metrics(pred_train, Y_train, 1)
 
@@ -199,7 +296,7 @@ def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None,
 
 def make_pred(model, city, doenca,  epochs, ini_date = None, end_train_date = None, 
                  end_date = None,ratio= 0.75,
-                 predict_n = 4, look_back =  4,
+                 predict_n = 4, look_back =  4, batch_size = 4, 
                   label = 'model', filename = None):
     """
     The parameters ended with the word `date` are used to apply the model in different time periods. 
@@ -223,9 +320,9 @@ def make_pred(model, city, doenca,  epochs, ini_date = None, end_train_date = No
                                                     ratio = ratio, look_back = look_back,
                                                     predict_n = predict_n, filename = filename)
    
-    model, hist, m_train, m_val =  train(model, X_train, Y_train, label = label, batch_size=1, epochs=epochs, geocode=city, overwrite=True, validation_split = 0.15, monitor = 'loss')
+    model, hist, m_train, m_val =  train(model, X_train, Y_train, label = label, batch_size=batch_size, epochs=epochs, geocode=city, overwrite=True, validation_split = 0.15, monitor = 'val_loss')
    
-    pred = evaluate(model, X_pred)
+    pred = evaluate(model, X_pred, batch_size)
 
     df_pred = pd.DataFrame(np.percentile(pred, 50, axis=2))
     df_pred25 = pd.DataFrame(np.percentile(pred, 2.5, axis=2))
@@ -238,17 +335,15 @@ def make_pred(model, city, doenca,  epochs, ini_date = None, end_train_date = No
     indice = list(df.index)
     indice = [i.date() for i in indice] 
 
-    plot_predicted_vs_data(pred, Y_pred, indice, city, 4, factor, split_point=len(Y_train), uncertainty= True, 
-                        label_name = f'{label}_{city}',
-            )           
+    plot_train_test(indice,  Y_pred, factor, df_pred, df_pred25, df_pred975, len(X_train), city)                    
 
     metrics = calculate_metrics(np.percentile(pred, 50, axis=2), Y_pred, factor)
 
     return metrics, hist, m_train, m_val   
 
 def make_pred_chik(model, city, epochs, ini_date = None, end_train_date = None, 
-                 end_date = None,ratio= 0.75, hidden = 8,
-                 predict_n = 4, look_back =  4,
+                 end_date = None,ratio= 0.75,
+                 predict_n = 4, look_back =  4, batch_size = 4, 
                   label = 'model'):
     """
     :param model: tensorflow model. 
@@ -271,9 +366,9 @@ def make_pred_chik(model, city, epochs, ini_date = None, end_train_date = None,
                                                     ratio = ratio, look_back = look_back,
                                                     predict_n = predict_n)
    
-    model, hist, m_train, m_val =  train(model, X_train, Y_train, label = label, batch_size=1, epochs=epochs, geocode=city, overwrite=True, validation_split = 0.0)
+    model, hist, m_train, m_val =  train(model, X_train, Y_train, label = label, batch_size=batch_size, epochs=epochs, geocode=city, overwrite=True, validation_split = 0.0)
    
-    pred = evaluate(model, X_pred)
+    pred = evaluate(model, X_pred, batch_size)
 
     df_pred = pd.DataFrame(np.percentile(pred, 50, axis=2))
     df_pred25 = pd.DataFrame(np.percentile(pred, 2.5, axis=2))
@@ -286,16 +381,15 @@ def make_pred_chik(model, city, epochs, ini_date = None, end_train_date = None,
     indice = list(df.index)
     indice = [i.date() for i in indice] 
 
-    plot_predicted_vs_data(pred, Y_pred, indice, city, 4, factor, split_point=len(Y_train), uncertainty= True, 
-                        label_name = f'{label}_{city}',
-            )           
+    plot_train_test(indice,  Y_pred, factor, df_pred, df_pred25, df_pred975, len(X_train), city)                    
+     
 
     metrics = calculate_metrics(np.percentile(pred, 50, axis=2), Y_pred, factor)
 
     return metrics, hist, m_train, m_val    
 
 def apply_dengue_chik(city, ini_date = '2021-01-01', 
-                     end_date = '2022-01-01', look_back = 4,
+                     end_date = '2022-01-01', look_back = 4, batch_size = 1, 
                      predict_n = 4,  label_m = f'dengue_train_base', filename = None): 
 
     """
@@ -312,7 +406,7 @@ def apply_dengue_chik(city, ini_date = '2021-01-01',
     
     model_dengue = keras.models.load_model(f'{MAIN_FOLDER}/saved_models/lstm/trained_{city}_model_{label_m}.h5',  compile =False)
 
-    pred_chik = evaluate(model_dengue, X_pred)
+    pred_chik = evaluate(model_dengue, X_pred, batch_size)
 
     df_pred_chik = pd.DataFrame(np.percentile(pred_chik, 50, axis=2))
     df_pred25_chik = pd.DataFrame(np.percentile(pred_chik, 2.5, axis=2))
@@ -327,7 +421,7 @@ def apply_dengue_chik(city, ini_date = '2021-01-01',
     indice = list(df.index)
     indice = [i.date() for i in indice]
 
-    plot_predicted_vs_data(pred_chik, Y_pred, indice, f'chik at {city} applying the dengue model', 4, factor, split_point= None, uncertainty= True, label_name = f'chik_{city}_{label_m}')
+    plot_train_test(indice,  Y_pred, factor, df_pred_chik, df_pred25_chik, df_pred975_chik, len(X_train), city)                    
 
     metrics = calculate_metrics(np.percentile(pred_chik, 50, axis=2), Y_pred, factor)
 
@@ -365,9 +459,11 @@ def train_fine(doenca, model, X_train, Y_train, batch_size=1, epochs=10, geocode
 
     return model
 
+
+
 def transf_chik_pred(model, city, ini_date = '2021-01-01', end_train_date = '2021-03-01',  
-                            end_date = '2022-12-31', ratio =0.75, filename = 'trained_2312908_model_dengue.h5',  epochs =100, features = 11,  
-                            predict_n = 4, look_back = 4, loss = 'msle', validation_split = 0.15,
+                            end_date = '2022-12-31', ratio =0.75,  epochs =100, 
+                            predict_n = 4, look_back = 4, batch_size =1,  validation_split = 0.15, monitor ='loss', patience = 30, 
                             label = f'transf_chik', filename_data = None): 
 
     """
@@ -381,21 +477,14 @@ def transf_chik_pred(model, city, ini_date = '2021-01-01', end_train_date = '202
                                                     ratio = ratio, look_back = look_back,
                                                     predict_n = predict_n, filename = filename_data
                                                     )
-
-    if isinstance(loss, str):
-        base_model = keras.models.load_model(filename, compile = True)
-    else: 
-        base_model = keras.models.load_model(filename, compile = False)
-
-        base_model.compile(loss = loss, optimizer="adam", metrics=["accuracy", "mape", "mse"])
-
-
-    model.set_weights(weights = base_model.get_weights())        
     
-    model, hist, metrics_train, metrics_val  = train(model = model, X_train = X_train, Y_train = Y_train, label = label,  epochs=epochs, geocode= city, overwrite=True,
-         validation_split = validation_split, patience = 10)
+    print('X_train:', X_train.shape)
 
-    pred = evaluate(model, X_pred)
+               
+    model, hist, metrics_train, metrics_val  = train(model = model, X_train = X_train, Y_train = Y_train, label = label,  epochs=epochs, geocode= city, overwrite=True,
+         validation_split = validation_split, patience=patience, monitor=monitor)
+
+    pred = evaluate(model, X_pred, batch_size)
 
     df_pred = pd.DataFrame(np.percentile(pred, 50, axis=2))
     df_pred25 = pd.DataFrame(np.percentile(pred, 2.5, axis=2))
@@ -408,8 +497,8 @@ def transf_chik_pred(model, city, ini_date = '2021-01-01', end_train_date = '202
         pickle.dump({'indice': indice, 'target': Y_pred,  'pred': df_pred,'pred25': df_pred25, 'pred975': df_pred975,                     
                     'factor': factor, 'city': city,'train_size': len(Y_train)}, f)
 
-    plot_predicted_vs_data(pred, Y_pred, indice, f'{city} - chik - transf model', 4, factor, split_point=len(Y_train), uncertainty= True, label_name = f'transf_{city}')    
-   
+    plot_train_test(indice,  Y_pred, factor, df_pred, df_pred25, df_pred975, len(X_train), city)                    
+
     metrics = calculate_metrics(np.percentile(pred, 50, axis=2), Y_pred, factor)
 
-    return metrics, metrics_train, metrics_val
+    return metrics, hist, metrics_train, metrics_val
