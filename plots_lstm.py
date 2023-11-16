@@ -5,7 +5,7 @@ import scipy.stats as ss
 from matplotlib import pyplot as P
 import matplotlib.pyplot as plt 
 
-MAIN_FOLDER = '../..'
+MAIN_FOLDER = '../'
 
 
 def plot_train(ax, indice, Ydata, factor, df_predicted, df_predicted25, df_predicted975, split_point, label):
@@ -83,77 +83,6 @@ def plot_train_test(indice, Ydata, factor, df_predicted, df_predicted25, df_pred
 
     plt.show()
 
-    return 
-
-def plot_predicted_vs_data(predicted, Ydata, indice, label, pred_window, factor, split_point=None, uncertainty=False, label_name = 'predict'):
-    """
-    Plot the model's predictions against data
-    :param predicted: model predictions
-    :param Ydata: observed data
-    :param indice:
-    :param label: Name of the locality of the predictions
-    :param pred_window:
-    :param factor: Normalizing factor for the target variable
-    """
-
-    P.figure()
-    if len(predicted.shape) == 2:
-        df_predicted = pd.DataFrame(predicted).T
-        df_predicted25 = None
-    else:
-        df_predicted = pd.DataFrame(np.percentile(predicted, 50, axis=2))
-        df_predicted25 = pd.DataFrame(np.percentile(predicted, 2.5, axis=2))
-        df_predicted975 = pd.DataFrame(np.percentile(predicted, 97.5, axis=2))
-        uncertainty = True
-    ymax = max(predicted.max() * factor, Ydata.max() * factor)
-
-    if split_point != None: 
-        if split_point == len(Ydata):
-
-            P.vlines(indice[-1], 0, ymax, "g", "dashdot", lw=2, label = 'Train/Test')
-
-        else:
-            P.vlines(indice[split_point + 7], 0, ymax, "g", "dashdot", lw=2, label = 'Train/Test')
-        
-    #P.text(indice[split_point + 2], 0.6 * ymax, "Out of sample Predictions")
-    # plot only the last (furthest) prediction point
-    P.plot(indice[len(indice)-Ydata.shape[0]:], Ydata[:, -1] * factor, 'k-', alpha=0.7, label='data')
-    P.plot(indice[len(indice)-Ydata.shape[0]:], df_predicted.iloc[:,-1] * factor, 'r-', alpha=0.5, label='median')
-    if uncertainty:
-        P.fill_between(indice[7:], df_predicted25[df_predicted25.columns[-1]] * factor,
-                       df_predicted975[df_predicted975.columns[-1]] * factor,
-                       color='b', alpha=0.3)
-
-    # plot all predicted points
-    # P.plot(indice[pred_window:], pd.DataFrame(Ydata)[7] * factor, 'k-')
-    # for n in range(df_predicted.shape[1] - pred_window):
-    #     P.plot(
-    #         indice[n: n + pred_window],
-    #         pd.DataFrame(Ydata.T)[n] * factor,
-    #         "k-",
-    #         alpha=0.7,
-    #     )
-    #     P.plot(indice[n: n + pred_window], df_predicted[n] * factor, "r-")
-    #     try:
-    #         P.vlines(
-    #             indice[n + pred_window],
-    #             0,
-    #             df_predicted[n].values[-1] * factor,
-    #             "b",
-    #             alpha=0.2,
-    #         )
-    #     except IndexError as e:
-    #         print(indice.shape, n, df_predicted.shape)
-    tag = '_unc' if uncertainty else ''
-    P.grid()
-    #P.title("Predictions for {}".format(label))
-    P.xlabel("time")
-    P.ylabel("incidence")
-    P.xticks(rotation=45)
-    P.legend()
-    P.savefig(f'{MAIN_FOLDER}/plots/lstm/{label_name}.png',bbox_inches='tight',  dpi = 300)
-    P.show()
-    
     return 
 
 

@@ -121,7 +121,7 @@ def get_temperature_copernicus(municipio=None):
                                conexao, index_col='index')
     else:
         df = pd.read_sql_query(
-            'select  index, date, temp_min, temp_max, umid_min, umid_max, pressao_min, pressao_max FROM "weather"."copernicus_brasil" WHERE geocodigo={} ORDER BY "date" ASC;'.format(
+            'select  index, date, temp_min, temp_max, umid_min, umid_max, pressao_min, pressao_max, precip_tot FROM "weather"."copernicus_brasil" WHERE geocodigo={} ORDER BY "date" ASC;'.format(
                 municipio), conexao, index_col='index')
         
     df = df.rename(columns = {'date': 'data_dia'})

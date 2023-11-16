@@ -2,13 +2,13 @@ import pickle
 import numpy as np
 from preprocessing import get_ml_data
 from plots_pgbm import plot_prediction
-from pgbm_nb import PGBMRegressor,PGBM
+from pgbm.torch import PGBMRegressor,PGBM
 
 
-MAIN_FOLDER = '../..'
+MAIN_FOLDER = '../'
 
 def pgbm_pred(city, state, predict_n, look_back, doenca = 'dengue', ratio = 0.75, ini_date = None, 
-                  end_train_date = None, end_date = None, label = 'all', filename = None):
+                  end_train_date = None, end_date = None, label = 'all', filename = None, verbose = 0):
     """
     Train a model for a single city and disease.
     :param city:
@@ -28,7 +28,7 @@ def pgbm_pred(city, state, predict_n, look_back, doenca = 'dengue', ratio = 0.75
     for d in range(1, predict_n + 1):
         tgt = targets[d][:len(X_train)]
 
-        model = PGBMRegressor(objective = 'mse', n_estimators= 100,  distribution='poisson')
+        model = PGBMRegressor(objective = 'mse', n_estimators= 100,  distribution='poisson', verbose = verbose)
         
         model.fit(X_train[:len(tgt)], tgt)
 
@@ -73,16 +73,44 @@ def cross_dengue_chik_prediction(city, state, predict_n, look_back, ini_date = '
     preds975 = np.empty((len(X_data), predict_n))
 
     for d in range(1, predict_n + 1):
+        #print(d)
 
-        model = PGBM()
+        model = PGBMRegressor(init_model = f'{MAIN_FOLDER}/saved_models/pgbm/{city}_dengue_city_model_{d}_pgbm.pt')
         
-        model.load(f'{MAIN_FOLDER}/saved_models/pgbm/{city}_dengue_city_model_{d}_pgbm.pt')
+        #model.load(f'{MAIN_FOLDER}/saved_models/pgbm/{city}_dengue_city_model_{d}_pgbm.pt')
+        
+        #pred = model.predict(X_data[:len(targets[d])].values)
+        
+        #pred_dist = model.predict_dist(X_data[:len(targets[d])].values)
+        
+        #pred25 = pred_dist.max(axis=0)
+        #pred = pred
+        #pred975 = pred_dist.min(axis=0)
+        #dif = len(X_data) - len(pred)
+        #if dif > 0:
+        #    pred = list(pred) + ([np.nan] * dif)
+        #    pred25 = list(pred25) + ([np.nan] * dif)
+        #    pred975 = list(pred975) + ([np.nan] * dif)
+        #preds[:, (d - 1)] = pred
+        #preds25[:, (d - 1)] = pred25
+        #preds975[:, (d - 1)] = pred975
 
         pred = model.predict(X_data[:len(targets[d])].values)
+        
+        #print(pred.shape)
         
         pred_dist = model.predict_dist(X_data[:len(targets[d])].values)
         
         pred25 = pred_dist.max(axis=0)
+        
+        print(pred.shape)
+        
+        #print(pred25)
+        
+        #print(pred)
+        
+        pred = pred
+        
         pred975 = pred_dist.min(axis=0)
 
         dif = len(X_data) - len(pred)

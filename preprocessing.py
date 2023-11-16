@@ -1,5 +1,6 @@
 import numpy as np 
 import pandas as pd 
+from epiweeks import Week
 from datetime import datetime
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import normalize, LabelEncoder
@@ -74,6 +75,19 @@ def normalize_data(df, log_transform=False, ratio = 0.75, end_train_date = None)
     :param ratio: defines the size of the training dataset 
     :return:
     """
+    
+    df['month'] = df.index.month
+    
+    weeks = []
+    for date in df.index:
+        #print(date)
+        weeks.append(Week.fromdate(date).weektuple()[1])
+        #print(Week.fromdate(date).weektuple()[1])
+        #break     
+
+    df['SE'] = weeks
+    
+    df.loc[df.index == '2018-04-04', 'SE'] = 15
 
     if 'municipio_geocodigo' in df.columns:
         df.pop('municipio_geocodigo')
@@ -88,18 +102,17 @@ def normalize_data(df, log_transform=False, ratio = 0.75, end_train_date = None)
     df.fillna(0, inplace=True)
     if ratio != None:
         norm, norm_weights = normalize(df.iloc[:int(df.shape[0]*ratio)], norm='max', axis=0, return_norm = True)
-        
+        max_values = df.iloc[:int(df.shape[0]*ratio)].max()
     else:
         norm, norm_weights = normalize(df.loc[df.index <= f'{end_train_date}'], norm='max', axis=0, return_norm = True)
-        
+        max_values = df.loc[df.index <= f'{end_train_date}'].max()
 
     df_norm = df.divide(norm_weights, axis='columns')
 
     if log_transform==True:
         df_norm = np.log(df_norm)
 
-    return df_norm, df.max(axis=0)
-
+    return df_norm, max_values
 
 def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, ratio = 0.75, look_back = 4, predict_n = 4, filename = None ):
     """
@@ -115,14 +128,11 @@ def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, r
     df = pd.read_csv(filename, index_col = 'Unnamed: 0' )
     df.index = pd.to_datetime(df.index)  
 
-    target_col = list(df.columns).index("casos_{}".format(city))
+    try:
+        target_col = list(df.columns).index("casos")
+    except: 
+        target_col = list(df.columns).index(f"casos_{city}")
 
-    for i in df.columns:
-
-        if i.startswith('casos_'):
-
-            df[f'diff_{i}'] = np.concatenate(([np.nan], np.diff(df[f'{i}'], 1)), axis = 0)
-    
     df = df.dropna()
 
     if ini_date != None: 
@@ -135,7 +145,14 @@ def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, r
         
         norm_df, max_features = normalize_data(df, ratio = ratio)
         factor = max_features[target_col]
-    
+
+        for i in norm_df.columns:
+
+            if i.startswith('casos_'):
+
+                norm_df[f'diff_{i}'] = np.concatenate(([np.nan], np.diff(norm_df[f'{i}'], 1)), axis = 0)
+                #norm_df[f'diff_2_{i}'] = np.concatenate(([np.nan, np.nan], np.diff(norm_df[f'{i}'], 2)), axis = 0)
+        
 
         X_train, Y_train, X_test, Y_test = split_data(
                 norm_df,
@@ -152,8 +169,18 @@ def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, r
 
     else:
         norm_df, max_features = normalize_data(df, ratio = None, end_train_date = end_train_date)
-        print(norm_df.index[0])
+        #print(norm_df.index[0])
         factor = max_features[target_col]
+
+        for i in norm_df.columns:
+
+            if i.startswith('casos_'):
+
+                norm_df[f'diff_{i}'] = np.concatenate(([np.nan], np.diff(norm_df[f'{i}'], 1)), axis = 0)
+                #norm_df[f'diff_2_{i}'] = np.concatenate(([np.nan, np.nan], np.diff(norm_df[f'{i}'], 2)), axis = 0)
+        
+
+
         # end_train_date needs to be lower than end_date, otherwise we will get an error in the value inside loc 
         if datetime.strptime(end_train_date, '%Y-%m-%d') < datetime.strptime(end_date, '%Y-%m-%d'):
             X_train, Y_train, X_test, Y_test = split_data(
@@ -177,7 +204,6 @@ def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, r
     return df,factor,  X_train, Y_train, X_pred, Y_pred
 
 
-
 def get_ml_data(city, ini_date, end_train_date, end_date, ratio, predict_n, look_back, filename = None):
 
 
@@ -186,13 +212,13 @@ def get_ml_data(city, ini_date, end_train_date, end_date, ratio, predict_n, look
 
     for i in data.columns:
 
-        if i.startswith('casos_est'):
+        if i.startswith('casos'):
 
             data[f'diff_{i}'] = np.concatenate( ([np.nan], np.diff(data[i], 1)))
 
     data = data.dropna()
 
-    target = f'casos_est_{city}'
+    target = f'casos_{city}'
 
     data_lag = build_lagged_features(data, look_back)
     data_lag.dropna()
@@ -228,6 +254,158 @@ def get_ml_data(city, ini_date, end_train_date, end_date, ratio, predict_n, look
     return X_data, X_train, targets, data_lag[target] 
 
 
+
+def normalize_data_chik(df_ref, df, log_transform=False, ratio = 0.75, end_train_date = None):
+    """
+    Normalize features in the example table
+    :param df:
+    :param ratio: defines the size of the training dataset 
+    :return:
+    """
+
+    if 'municipio_geocodigo' in df.columns:
+        df.pop('municipio_geocodigo')
+        df_ref.pop('municipio_geocodigo')
+
+    for col in df.columns:
+        if col.startswith('nivel'):
+            # print(col)
+            le = LabelEncoder()
+            le.fit(df[col])
+            le.fit(df_ref[col])
+            df[col] = le.transform(df[col])
+            df_ref[col] = le.transform(df_ref[col])
+
+    df.fillna(0, inplace=True)
+    df_ref.fillna(0, inplace=True)
+    if ratio != None:
+        norm, norm_weights = normalize(df_ref.iloc[:int(df_ref.shape[0]*ratio)], norm='max', axis=0, return_norm = True)
+        
+        for col in df_ref.columns:
+            if 'casos' in col:
+                pos = list(df_ref.columns).index(col)
+
+                norm_weights[pos] = 2.13*norm_weights[pos]
+
+        #print(norm_weights.shape)
+        
+        max_values = df_ref.iloc[:int(df_ref.shape[0]*ratio)].max()
+
+    else:
+        norm, norm_weights = normalize(df_ref.loc[df_ref.index <= f'{end_train_date}'], norm='max', axis=0, return_norm = True)
+        
+        for col in df_ref.columns:
+            if 'casos' in col:
+                pos = list(df_ref.columns).index(col)
+
+                norm_weights[pos] = 2.13*norm_weights[pos]
+
+        max_values = df_ref.loc[df_ref.index <= f'{end_train_date}'].max()
+
+    df_norm = df.divide(norm_weights, axis='columns')
+
+    if log_transform==True:
+        df_norm = np.log(df_norm)
+
+    return df_norm, max_values
+
+def get_nn_data_chik(city, ini_date = None, end_date = None, end_train_date = None, ratio = 0.75, look_back = 4, predict_n = 4, filename = None ):
+    """
+    :param city: int. The ibge code of the city, it's a seven number code 
+    :param ini_date: string or None. Initial date to use when creating the train/test arrays 
+    :param end_date: string or None. Last date to use when creating the train/test arrays
+    :param end_train_date: string or None. Last day used to create the train data 
+    :param ratio: float. If end_train_date is None, we use the ratio to spli the data into train and test 
+    :param look_back: int. Number of last days used to make the forecast
+    :param predict_n: int. Number of days forecast
+
+    """
+
+    filename_ref = f'../../data/dengue_{city}_cluster.csv'
+
+    df_ref = pd.read_csv(filename_ref, index_col = 'Unnamed: 0' )
+    df_ref.index = pd.to_datetime(df_ref.index)
+    df_ref = df_ref.sort_index()
+
+    df = pd.read_csv(filename, index_col = 'Unnamed: 0' )
+    df.index = pd.to_datetime(df.index)  
+
+    target_col = list(df.columns).index("casos")
+
+    df = df.dropna()
+    df_ref = df_ref.dropna()
+
+    if ini_date != None: 
+        df = df.loc[ini_date:]
+        df_ref = df_ref.loc[ini_date:]
+
+    if end_date != None:
+        df = df.loc[:end_date]
+        df_ref = df_ref.loc[:end_date]
+
+    if end_train_date == None: 
+        
+        norm_df, max_features = normalize_data_chik(df_ref, df, ratio = ratio)
+        
+        factor = 2.13*max_features[target_col]
+
+        for i in norm_df.columns:
+
+            if i.startswith('casos_'):
+
+                norm_df[f'diff_{i}'] = np.concatenate(([np.nan], np.diff(norm_df[f'{i}'], 1)), axis = 0)
+                #norm_df[f'diff_2_{i}'] = np.concatenate(([np.nan, np.nan], np.diff(norm_df[f'{i}'], 2)), axis = 0)
+        
+
+        X_train, Y_train, X_test, Y_test = split_data(
+                norm_df,
+                look_back= look_back,
+                ratio=ratio,
+                predict_n = predict_n, 
+                Y_column=target_col,
+        )
+    
+        # These variables will already concat the train and test array to easy the work of make 
+        # the predicions of both 
+        X_pred = np.concatenate((X_train, X_test), axis = 0)
+        Y_pred = np.concatenate((Y_train, Y_test), axis = 0)
+
+    else:
+        norm_df, max_features = normalize_data_chik(df_ref, df, ratio = None, end_train_date = end_train_date)
+        print(norm_df.index[0])
+        factor = 2.13*max_features[target_col]
+
+        for i in norm_df.columns:
+
+            if i.startswith('casos_'):
+
+                norm_df[f'diff_{i}'] = np.concatenate(([np.nan], np.diff(norm_df[f'{i}'], 1)), axis = 0)
+                #norm_df[f'diff_2_{i}'] = np.concatenate(([np.nan, np.nan], np.diff(norm_df[f'{i}'], 2)), axis = 0)
+        
+
+        # end_train_date needs to be lower than end_date, otherwise we will get an error in the value inside loc 
+        if datetime.strptime(end_train_date, '%Y-%m-%d') < datetime.strptime(end_date, '%Y-%m-%d'):
+            X_train, Y_train, X_test, Y_test = split_data(
+                    norm_df.loc[norm_df.index <= end_train_date],
+                    look_back= look_back,
+                    ratio=1,
+                    predict_n = predict_n, 
+                    Y_column=target_col,
+            )
+
+            # X_pred and Y_pred will already concat the train and test array to easy the work of make 
+            # the predicions of both 
+            X_pred, Y_pred, X_test, Y_test = split_data(
+                    norm_df,
+                    look_back= look_back,
+                    ratio=1,
+                    predict_n = predict_n, 
+                    Y_column=target_col,
+            )
+
+     
+
+    return df,factor,  X_train, Y_train, X_pred, Y_pred
 
 
 

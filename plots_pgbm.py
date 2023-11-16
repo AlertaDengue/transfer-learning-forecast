@@ -5,7 +5,7 @@ import seaborn as sns
 import scipy.stats as ss
 import matplotlib.pyplot as plt  
 
-MAIN_FOLDER = '../..'
+MAIN_FOLDER = '../'
 
 
 def plot_prediction(preds, preds25, preds975, ydata, title, state, train_size, doenca, label,  path='quantile_lgbm', save=True):
