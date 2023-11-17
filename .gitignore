@@ -8,7 +8,9 @@ __pycache__/
 
 data/*.csv
 clusters/*.pkl
-
+predictions/lstm/*.pkl 
+predictions/pgbm/*.pkl
+ 
 # Distribution / packaging
 notebooks/tensorboard/
 .Python

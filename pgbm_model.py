@@ -8,7 +8,7 @@ from pgbm.torch import PGBMRegressor,PGBM
 MAIN_FOLDER = '../'
 
 def pgbm_pred(city, state, predict_n, look_back, doenca = 'dengue', ratio = 0.75, ini_date = None, 
-                  end_train_date = None, end_date = None, label = 'all', filename = None, verbose = 0):
+                  end_train_date = None, end_date = None, label = 'all', filename = None, verbose = 1):
     """
     Train a model for a single city and disease.
     :param city:
@@ -28,7 +28,7 @@ def pgbm_pred(city, state, predict_n, look_back, doenca = 'dengue', ratio = 0.75
     for d in range(1, predict_n + 1):
         tgt = targets[d][:len(X_train)]
 
-        model = PGBMRegressor(objective = 'mse', n_estimators= 100,  distribution='poisson', verbose = verbose)
+        model = PGBMRegressor(objective = 'mse', n_estimators= 50,  distribution='poisson', verbose = verbose)
         
         model.fit(X_train[:len(tgt)], tgt)
 

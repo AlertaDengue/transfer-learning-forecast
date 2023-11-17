@@ -61,7 +61,7 @@ def transf_and_pred_chik(city, ini_date, end_date_train, end_date):
     FEAT = int((1 +1/16)*cols) +2 # number of features
     
     filename = f'../saved_models/lstm/trained_{city}_dengue_msle.h5'
-    model = transf_model(filename, L1,L2,HIDDEN, FEAT, PREDICT_N, LOOK_BACK, batch_size = BATCH_SIZE, lr = 0.001)
+    model = transf_model(filename, L1,L2,HIDDEN, FEAT, PREDICT_N, LOOK_BACK, batch_size = BATCH_SIZE, lr = 0.0001)
     
     # apply transf model 
     m_msle, hist, m_t, m_val = transf_chik_pred(model, city, ini_date = ini_date, end_train_date = end_date_train,  
@@ -87,7 +87,7 @@ def apply_dl_dengue_on_chik(city, ini_date, end_date_train, end_date):
 def train_pgbm_dengue(city, state, ini_date, end_date_train, end_date):
    FILENAME_DATA = f'../data/dengue_{city}_cluster.csv'
 
-   preds, preds25, preds975, X_train, targets = pgbm_pred(city, state, PREDICT_N, LOOK_BACK, doenca = 'dengue', ini_date = ini_date, end_train_date = end_date_train, end_date = end_date,  filename = FILENAME_DATA)
+   preds, preds25, preds975, X_train, targets = pgbm_pred(city, state, PREDICT_N, LOOK_BACK, doenca = 'dengue', ini_date = ini_date, end_train_date = end_date_train, end_date = end_date,  filename = FILENAME_DATA, verbose = 1)
 
 def apply_dengue_pgbm_on_chik(city, state, ini_date, end_date):
     FILENAME_DATA = f'../data/chik_{city}_cluster.csv'
@@ -97,5 +97,5 @@ def apply_dengue_pgbm_on_chik(city, state, ini_date, end_date):
 def train_pgbm_chik(city, state, ini_date, end_date_train, end_date):
    FILENAME_DATA = f'../data/chik_{city}_cluster.csv'
 
-   preds, preds25, preds975, X_train, targets = pgbm_pred(city, state, PREDICT_N, LOOK_BACK, doenca = 'dengue', ini_date = ini_date, end_train_date = end_date_train, end_date = end_date,  filename = FILENAME_DATA)
+   preds, preds25, preds975, X_train, targets = pgbm_pred(city, state, PREDICT_N, LOOK_BACK, doenca = 'chik', ini_date = ini_date, end_train_date = end_date_train, end_date = end_date,  filename = FILENAME_DATA)
   
