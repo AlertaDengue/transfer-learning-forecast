@@ -67,7 +67,7 @@ def transf_and_pred_chik(city, ini_date, end_date_train, end_date):
     m_msle, hist, m_t, m_val = transf_chik_pred(model, city, ini_date = ini_date, end_train_date = end_date_train,  
                                     end_date = end_date,  epochs= EPOCHS, 
                                     predict_n = PREDICT_N, look_back = LOOK_BACK, validation_split = 0.0, monitor = 'loss',
-                                      patience = 10, min_delta = 0.01,
+                                      patience = 10, min_delta = 0.001,
                                     label = f'transf_msle', ratio = None, filename_data = FILENAME_DATA,  verbose=1)
 
 

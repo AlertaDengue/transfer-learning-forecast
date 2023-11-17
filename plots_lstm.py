@@ -161,7 +161,10 @@ def plot_loss(hist, title = 'Model loss'):
     """ 
     # "Loss"
     P.plot(hist.history['loss'])
-    P.plot(hist.history['val_loss'])
+    try:
+        P.plot(hist.history['val_loss'])
+    except: pass 
+    
     P.title(f'{title}')
     P.ylabel('loss')
     P.xlabel('epoch')

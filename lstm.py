@@ -347,7 +347,7 @@ def transf_model(filename, l1, l2, hidden, features, predict_n, look_back=10, ba
 
     
 
-def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None, overwrite=True, validation_split = 0.25, patience = 50, monitor = 'val_loss', min_delta = 0.01, verbose = 1, doenca = 'dengue'):
+def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None, overwrite=True, validation_split = 0.25, patience = 50, monitor = 'val_loss', min_delta = 0.025, verbose = 1, doenca = 'dengue'):
     """
     Train the lstm model 
     :param model: LSTM model compiled and created with the build_model function 
@@ -404,7 +404,7 @@ def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None,
             batch_size=batch_size,
             epochs=epochs,
             verbose=verbose,
-            callbacks=[TB_callback, EarlyStopping(monitor = monitor, min_delta=0.025, patience=patience)]
+            callbacks=[TB_callback, EarlyStopping(monitor = monitor, min_delta=min_delta, patience=patience)]
         ) 
         
         model.save(f"{MAIN_FOLDER}/saved_models/lstm/trained_{geocode}_{doenca}_{label}.h5", overwrite=overwrite)
