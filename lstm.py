@@ -382,7 +382,7 @@ def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None,
             epochs=epochs,
             validation_data=(X_test,Y_test), 
             verbose=verbose,
-            callbacks=[TB_callback, EarlyStopping(monitor = monitor, min_delta=min_delta, patience=patience)]
+            callbacks=[TB_callback, EarlyStopping(monitor = monitor, min_delta=min_delta, patience=patience, restore_best_weights = True)]
         )
         
         model.save(f"{MAIN_FOLDER}/saved_models/lstm/trained_{geocode}_{doenca}_{label}.h5", overwrite=overwrite)
@@ -455,7 +455,8 @@ def make_pred(model, city, doenca,  epochs, ini_date = None, end_train_date = No
     
     with open(f'{MAIN_FOLDER}/predictions/lstm/lstm_{city}_{doenca}_{label}.pkl', 'wb') as f:
         pickle.dump({'xdata': X_train, 'indice': list(df.index)  , 'target': Y_pred,  'pred': df_pred, 'ub': df_pred975,  'lb':df_pred25,
-                    'factor': factor, 'city': city}, f)
+                    'factor': factor, 'city': city,
+                    'ensemble': pred}, f)
 
     indice = list(df.index)
     indice = [i.date() for i in indice] 
@@ -492,45 +493,8 @@ def apply_dengue_chik(city, ini_date = '2021-01-01', end_train_date = None,
     with open(f'{MAIN_FOLDER}/predictions/lstm/lstm_{city}_chik_predictions_{label_m}.pkl', 'wb') as f:
         pickle.dump({'indice': list(df.index)  , 'target': Y_pred,  'pred': df_pred_chik, 'ub': df_pred975_chik,  
                      'lb':df_pred25_chik, 
-                    'factor': factor, 'city': city
-                    }, f)
-
-    indice = list(df.index)
-    indice = [i.date() for i in indice]
-
-    plot_train_test(indice,  Y_pred, factor, df_pred_chik, df_pred25_chik, df_pred975_chik, len(X_train), city)                    
-
-    metrics = calculate_metrics(np.percentile(pred_chik, 50, axis=2), Y_pred, factor)
-
-    return metrics
-
-
-def apply_dengue(city, ini_date = '2021-01-01', end_train_date = None, 
-                     end_date = '2022-01-01', look_back = 4, batch_size = 1, 
-                     predict_n = 4,  label_m = f'dengue_train_base', filename = None, ratio = 1): 
-
-    """
-    Function to apply a model trained with dengue data using chik data. 
-    """
-                                                                    
-    
-    df,factor,  X_train, Y_train, X_pred, Y_pred = get_nn_data(city, ini_date = ini_date, 
-                                                     end_date = end_date, end_train_date = end_train_date,
-                                                    ratio = ratio, look_back = look_back,
-                                                    predict_n = predict_n, filename = filename)
-    
-    model_dengue = keras.models.load_model(f'{MAIN_FOLDER}/saved_models/lstm/trained_{city}_model_{label_m}.h5',  compile =False)
-
-    pred_chik = evaluate(model_dengue, X_pred, batch_size)
-
-    df_pred_chik = pd.DataFrame(np.percentile(pred_chik, 50, axis=2))
-    df_pred25_chik = pd.DataFrame(np.percentile(pred_chik, 2.5, axis=2))
-    df_pred975_chik = pd.DataFrame(np.percentile(pred_chik, 97.5, axis=2))
-
-    with open(f'{MAIN_FOLDER}/predictions/lstm/lstm_{city}_dengue_predictions_{label_m}.pkl', 'wb') as f:
-        pickle.dump({'indice': list(df.index)  , 'target': Y_pred,  'pred': df_pred_chik, 'ub': df_pred975_chik,  
-                     'lb':df_pred25_chik, 
-                    'factor': factor, 'city': city
+                    'factor': factor, 'city': city,
+                    'ensemble': pred_chik 
                     }, f)
 
     indice = list(df.index)
@@ -575,7 +539,8 @@ def transf_chik_pred(model, city, ini_date = '2021-01-01', end_train_date = '202
     
     with open(f'{MAIN_FOLDER}/predictions/lstm/tl_{city}_chik_{label}.pkl', 'wb') as f:
         pickle.dump({'indice': indice, 'target': Y_pred,  'pred': df_pred,'lb': df_pred25, 'ub': df_pred975,                     
-                    'factor': factor, 'city': city,'train_size': len(Y_train)}, f)
+                    'factor': factor, 'city': city, 'train_size': len(Y_train),
+                    'ensemble': pred}, f)
         
 
     plot_train_test(indice,  Y_pred, factor, df_pred, df_pred25, df_pred975, len(X_train), city)                    
