@@ -2,7 +2,8 @@ import pickle
 import numpy as np
 from preprocessing import get_ml_data
 from plots_pgbm import plot_prediction
-from pgbm.torch import PGBMRegressor,PGBM
+# from pgbm.torch import PGBMRegressor,PGBM
+from pgbm.sklearn import HistGradientBoostingRegressor
 
 
 MAIN_FOLDER = '../'
@@ -28,7 +29,7 @@ def pgbm_pred(city, state, predict_n, look_back, doenca = 'dengue', ratio = 0.75
     for d in range(1, predict_n + 1):
         tgt = targets[d][:len(X_train)]
 
-        model = PGBMRegressor(objective = 'mse', n_estimators= 50,  distribution='poisson', verbose = verbose)
+        model = HistGradientBoostingRegressor(objective = 'mse', n_estimators= 50,  distribution='poisson', verbose = verbose)
         
         model.fit(X_train[:len(tgt)], tgt)
 
@@ -75,7 +76,7 @@ def cross_dengue_chik_prediction(city, state, predict_n, look_back, ini_date = '
     for d in range(1, predict_n + 1):
         #print(d)
 
-        model = PGBMRegressor(init_model = f'{MAIN_FOLDER}/saved_models/pgbm/{city}_dengue_city_model_{d}_pgbm.pt')
+        model = HistGradientBoostingRegressor(init_model = f'{MAIN_FOLDER}/saved_models/pgbm/{city}_dengue_city_model_{d}_pgbm.pt')
         
         #model.load(f'{MAIN_FOLDER}/saved_models/pgbm/{city}_dengue_city_model_{d}_pgbm.pt')
         
