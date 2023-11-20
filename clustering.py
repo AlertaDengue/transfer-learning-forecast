@@ -231,7 +231,7 @@ def compute_clusters(
     cm = lag_ccf(df.values, maxlags=lags, smooth=smooth)[0]
 
     # substituindo os valores nan por zero 
-    cm[np.isnan(cm)] = 0 
+    cm = np.nan_to_num(cm)
 
     # Plotting the dendrogram
     linkage = hcluster.linkage(cm, method="complete")
