@@ -2,26 +2,28 @@ This repo was created to store the codes used to create the results shown in the
 
 This study is an updated version of this work (available in pre-print): https://www.medrxiv.org/content/10.1101/2020.02.03.20020164v1.full.pdf
 
-In this work, we applied the transfer learning technique to predict the chikungunya cases using a model trained to predict the dengue cases. We applied this methodology to four Brazilian cities: 
-
-* Recife - PE (code associated with the city: 2611606);
-* João Pessoa - PB (code associated with the city: 2507507); 
-* Rio de Janeiro - RJ (code associated with the city: 3304557);
-* Fortaleza - CE (code associated with the city: 2304400). 
+In this work, we applied the transfer learning technique to predict the chikungunya cases using a model trained to predict the dengue cases.
 
 Our repo is organized as follows:
 
 * In the `data` folder, we have `.csv` tables with the data used to train and apply the models;
 
-* In the `notebooks` folder, we have jupyter notebooks with the results of our analysis for each city. The notebooks are organized by folders: 
+* `compute_cluster.ipynb`: In this notebook is applied a hierarchical clustering techinique to cluster the cities by dengue cases. The cities in the cluster will be used as predictors for the cases of each city in the cluster while applying the models. 
 
-- `training`: In this folder we have the notebooks used to train the models. Also, there is a comparation of the error in train and validation datasets for the same model using the MSLE loss function and the custom MSLE loss function. 
+* `download_data_with_copernicus.ipynb`: notebook to download the data from infodengue and format it in the right format for the models. 
 
-- `transfer`: In this folder we have the notebooks used to apply the transfer learning techinique in the models. 
+* In the `notebooks` folder, we have jupyter notebooks with the results of our analysis. The notebooks are organized by folders: 
 
-- `evaluation`: In this folder we have the notebooks used to compare the performance of the 3 kind of models trained: Bi-LSTM, transfer learning using Bi-LSTM and PGBM. 
+- `comp_models.ipynb`: In this notebook we have the code used to create the figures to compare the predictions, the qq plots and compute the skill scores.
 
-- `create_figures`: In this notebook we have the code used to generate the figures shown in the article. 
+- `train_and_apply_models.ipynb`: In this notebook we have the code to apply the following models: 
+* train a model on dengue and use it to predict chik using a lstm model;
+* apply transfer learning to predict chik using a lstm model;
+* train a model on chik and use it to predict chik using a lstm model;
+* train a model on dengue and use it to predict chik using a pgbm model;
+* train a model on chik and use it to predict chik using a pgbm model;
+
+The notebook above uses the functions saved in the module `train_models.py`. 
 
 * In the `plots` folder, we saved the figures;
 * In the `predictions` folder, we save the predictions of the modes in `.pkl` files; 
