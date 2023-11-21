@@ -15,6 +15,12 @@ from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping
 
 MAIN_FOLDER = '../'
+#====The lines below are needed for GPU use. ==================
+gpu_devices = tf.config.experimental.list_physical_devices('GPU')
+for device in gpu_devices:
+    tf.config.experimental.set_memory_growth(device, True)
+tf.config.optimizer.set_jit("autoclustering")
+#==============================================================
 
 def evaluate(model, Xdata, batch_size,  uncertainty=True):
     """
@@ -147,7 +153,7 @@ def build_model(l1=1e-5, l2=1e-5, hidden=8, features=100, predict_n=4, look_back
     model = keras.Model(inp, out)
 
     start = time()
-    optimizer = keras.optimizers.Adam(learning_rate = lr)
+    optimizer = keras.optimizers.legacy.Adam(learning_rate = lr)
     #optimizer = tf.keras.optimizers.experimental.SGD(learning_rate=0.0001)
 
     model.compile(loss = loss, optimizer=optimizer, metrics=["accuracy", "mape", "mse"])
@@ -248,7 +254,7 @@ def transf_model(filename, l1, l2, hidden, features, predict_n, look_back=10, ba
 
 
     start = time()
-    optimizer = keras.optimizers.Adam(learning_rate = lr)
+    optimizer = keras.optimizers.legacy.Adam(learning_rate = lr)
     #optimizer = tf.keras.optimizers.experimental.SGD(learning_rate=0.0001)
 
     model.compile(loss = loss, optimizer=optimizer, metrics=["accuracy", "mape", "mse"])
@@ -335,7 +341,7 @@ def transf_model(filename, l1, l2, hidden, features, predict_n, look_back=10, ba
     model.set_weights(weights = base_model.get_weights())       
 
     start = time()
-    optimizer = keras.optimizers.Adam(learning_rate = lr)
+    optimizer = keras.optimizers.legacy.Adam(learning_rate = lr)
     #optimizer = tf.keras.optimizers.experimental.SGD(learning_rate=0.0001)
 
     model.compile(loss = loss, optimizer=optimizer, metrics=["accuracy", "mape", "mse"])

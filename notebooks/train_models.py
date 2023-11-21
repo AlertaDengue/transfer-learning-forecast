@@ -29,7 +29,7 @@ def train_dengue_model(city,  end_date_train = '2022-11-01', end_date = '2023-11
                                                                ratio= None, end_date = end_date,
                          predict_n = PREDICT_N, look_back =  LOOK_BACK, label = 'msle',  filename = FILENAME_DATA, verbose = 0)
 
-    plot_loss(h_msle_all, title = F'Model loss - MSLE - {city}')
+    plot_loss(h_msle_all, title = f'Model loss - MSLE - {city}')
   
 
 def train_chik_model(city, end_date_train = '2022-11-01', end_date = '2023-11-01', ini_date = None): 
