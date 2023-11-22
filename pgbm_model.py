@@ -29,10 +29,11 @@ def pgbm_pred(city, state, predict_n, look_back, doenca = 'dengue', ratio = 0.75
     for d in range(1, predict_n + 1):
         tgt = targets[d][:len(X_train)]
 
-        model = HistGradientBoostingRegressor(objective = 'mse', n_estimators= 50,  distribution='poisson', verbose = verbose)
-        
-        model.fit(X_train[:len(tgt)], tgt)
+        # model = HistGradientBoostingRegressor(objective = 'mse', n_estimators= 50,  distribution='poisson', verbose = verbose)
+        model = HistGradientBoostingRegressor(distribution='poisson', verbose = verbose)
 
+        model.fit(X_train[:len(tgt)], tgt)
+        model
         model.save(f'{MAIN_FOLDER}/saved_models/pgbm/{city}_{doenca}_city_model_{d}_pgbm.pt')
 
         pred = model.predict(X_data[:len(targets[d])].values)
