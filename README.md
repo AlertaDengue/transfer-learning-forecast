@@ -25,6 +25,16 @@ Our repo is organized as follows:
 
 The notebook above uses the functions saved in the module `train_models.py`. 
 
+- `cities_with_more_cases_by_region.ipynb`: In this notebook there is the code to select the cities with more chik cases in 2023 and that had epidemics in the previous years to apply the transfer learning techinique. 
+
+
+To apply the models in the cities selected on the notebook above use: 
+
+* `train_dl.py` to train the DL model on dengue, chik and apply the transfer;
+* `apply_dl.py` to generate predictions in train and test for the models trained above;
+* `train_pgbm.py` to train the PGBM model on dengue, chik and apply the transfer;
+* `apply_pgbm.py` to generate predictions in train and test for the models trained above;
+
 * In the `plots` folder, we saved the figures;
 * In the `predictions` folder, we save the predictions of the modes in `.pkl` files; 
 * In the `saved_models` folder, we save the models trained. 

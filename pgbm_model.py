@@ -26,7 +26,7 @@ def pgbm_train(city, predict_n, look_back, doenca = 'dengue', ratio = 0.75, ini_
     for d in range(1, predict_n + 1):
         tgt = targets[d][:len(X_train)]
 
-        model = HistGradientBoostingRegressor(random_state=0,  distribution='normal', verbose = verbose)
+        model = HistGradientBoostingRegressor(random_state=0, l2_regularization = 0.1, distribution='negativebinomial', verbose = verbose)
         
         model.fit(X_train[:len(tgt)], tgt)
 
@@ -51,13 +51,19 @@ def pgbm_pred(city, predict_n, look_back, doenca = 'dengue', ratio = 0.75, ini_d
 
         model = joblib.load( f'{MAIN_FOLDER}/saved_models/pgbm/{city}_{doenca}_{d}_pgbm.pt')
 
-        pred, pred_std = model.predict(X_data[:len(targets[d])].values,  return_std=True)
-            
-        #pred_dist = model.sample(pred, pred_std, n_estimates=1000, random_state=0)
-        pred[pred < 0 ] = 0
-        pred25 = pred - 1.96*pred_std#np.percentile(pred_dist, 0.025, axis=0)
-        pred25[pred25<0] = 0
-        pred975 =  pred +  1.96*pred_std# np.percentile(pred_dist, 0.975, axis=0)
+        pred, pred_std = model.predict(X_data[:len(targets[d])].values, return_std=True)
+        
+        pred[pred < 0 ] = 0.1
+        ensemble = model.sample(pred, pred_std, n_estimates=10_000, random_state=0)
+
+
+        if d == 4:
+            ensemble_to_save = ensemble
+
+        pred25 = np.percentile(ensemble, 2.5, axis=0)
+        pred = np.percentile(ensemble, 50, axis=0)
+        pred975 = np.percentile(ensemble, 97.5, axis=0)
+       
     
         dif = len(X_data) - len(pred)
         if dif > 0:
@@ -67,6 +73,7 @@ def pgbm_pred(city, predict_n, look_back, doenca = 'dengue', ratio = 0.75, ini_d
         preds[:, (d - 1)] = pred
         preds25[:, (d - 1)] = pred25
         preds975[:, (d - 1)] = pred975
+        
 
     if plot:
         state = ''
@@ -91,8 +98,11 @@ def pgbm_pred(city, predict_n, look_back, doenca = 'dengue', ratio = 0.75, ini_d
 
     with open(f'{MAIN_FOLDER}/predictions/pgbm/pgbm_{city}_{doenca}_pred.pkl', 'wb') as f:
         pickle.dump({'target':target,'dates': x, 'preds': y, 'preds25': y25,
-                    'preds975': y975, 'train_size': len(X_train)
+                    'preds975': y975, 'train_size': len(X_train), 'ensemble': ensemble_to_save
                     }, f)
+        
+
+    return #model 
 
         
 
@@ -112,13 +122,19 @@ def cross_dengue_chik_prediction(city, predict_n, look_back, ini_date = '2020-01
 
         model = joblib.load( f'{MAIN_FOLDER}/saved_models/pgbm/{city}_dengue_{d}_pgbm.pt')
 
-        pred, pred_std = model.predict(X_data[:len(targets[d])].values,  return_std=True)
-            
-        #pred_dist = model.sample(pred, pred_std, n_estimates=1000, random_state=0)
-        pred[pred < 0 ] = 0
-        pred25 = pred - 1.96*pred_std#np.percentile(pred_dist, 0.025, axis=0)
-        pred25[pred25<0] = 0
-        pred975 =  pred +  1.96*pred_std# np.percentile(pred_dist, 0.975, axis=0)
+        pred, pred_std = model.predict(X_data[:len(targets[d])].values, return_std=True)
+        
+        pred[pred < 0 ] = 0.1
+        ensemble = model.sample(pred, pred_std, n_estimates=10_000, random_state=0)
+
+
+        if d == 4:
+            ensemble_to_save = ensemble
+
+        pred25 = np.percentile(ensemble, 2.5, axis=0)
+        pred = np.percentile(ensemble, 50, axis=0)
+        pred975 = np.percentile(ensemble, 97.5, axis=0)
+       
     
         dif = len(X_data) - len(pred)
         if dif > 0:
@@ -128,11 +144,15 @@ def cross_dengue_chik_prediction(city, predict_n, look_back, ini_date = '2020-01
         preds[:, (d - 1)] = pred
         preds25[:, (d - 1)] = pred25
         preds975[:, (d - 1)] = pred975
-    state = ''
+        
+
     if plot:
+        state = ''
         x, y, y25, y975 = plot_prediction(preds, preds25, preds975, target, f'Predictions for {city}', state, len(X_train), 'chik',
-                                        label = f'pgbm_cross_pred{city}')
-    else:
+                                            label = f'pgbm_{city}')
+    
+    else: 
+        # configure predictions 
         ydata = target
         pred_window = preds.shape[1]
         llist = range(len(ydata.index) - (preds.shape[1]))
@@ -147,10 +167,9 @@ def cross_dengue_chik_prediction(city, predict_n, look_back, ini_date = '2020-01
             y25.append(preds25[n][-1])
             y975.append(preds975[n][-1])
 
-
-    with open(f'{MAIN_FOLDER}/predictions/pgbm/pgbm_{city}_chik_cross_predictions.pkl', 'wb') as f:
-        pickle.dump({'target': target, 'dates': x, 'preds': y, 'preds25': y25,
-                    'preds975': y975, 'train_size': len(X_data)
+    with open(f'{MAIN_FOLDER}/predictions/pgbm/pgbm_{city}_chik_cross_pred.pkl', 'wb') as f:
+        pickle.dump({'target':target,'dates': x, 'preds': y, 'preds25': y25,
+                    'preds975': y975, 'train_size': len(X_train), 'ensemble': ensemble_to_save
                     }, f)
 
     return preds, preds25, preds975, X_data, target
