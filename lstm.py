@@ -238,106 +238,7 @@ def transf_model(filename, l1, l2, hidden, features, predict_n, look_back=10, ba
 
     base_model = keras.models.load_model(filename, compile=True)
 
-    model.set_weights(weights=base_model.get_weights())
-
-    # model.trainable = False  # Freeze the outer model
-
-    # for layer in model.layers :
-    #   name = layer.name
-
-    #  if (name == 'dense'):
-
-    #     model.get_layer(name).trainable = True
-
-    # else:
-
-    #   model.get_layer(name).trainable = False
-
-    start = time()
-    optimizer = keras.optimizers.legacy.Adam(learning_rate=lr)
-    # optimizer = tf.keras.optimizers.experimental.SGD(learning_rate=0.0001)
-
-    model.compile(loss=loss, optimizer=optimizer, metrics=["accuracy", "mape", "mse"])
-    print("Compilation Time : ", time() - start)
-    plot_model(model, to_file="LSTM_model.png")
-    print(model.summary())
-    return model
-
-
-def transf_model(filename, l1, l2, hidden, features, predict_n, look_back=10, batch_size=1, loss='msle', lr=0.005,
-                 f_act_1='tanh', f_act_2='tanh'):
-    inp = keras.Input(
-        shape=(look_back, features),
-        # batch_shape=(batch_size, look_back, features)
-    )
-
-    x = Bidirectional(LSTM(
-        hidden,
-        input_shape=(look_back, features),
-        stateful=False,
-        batch_input_shape=(batch_size, look_back, features),
-        return_sequences=True,
-        kernel_regularizer=regularizers.L1L2(l1=l1, l2=l2),
-        bias_regularizer=regularizers.L2(l2),
-        # activity_regularizer=regularizers.L2(1e-5),
-        activation=f_act_1,
-        dropout=0.1,
-        recurrent_dropout=0.1,
-        implementation=2,
-        unit_forget_bias=True,
-    ), merge_mode='ave', name='bidirectional_1')(inp, training=True)
-
-    x = Dropout(0.2, name='dropout_1')(x, training=True)
-
-    x = LSTM(
-        hidden,
-        input_shape=(look_back, features),
-        stateful=False,
-        batch_input_shape=(batch_size, look_back, features),
-        return_sequences=True,
-        kernel_regularizer=regularizers.L1L2(l1=l1, l2=l2),
-        bias_regularizer=regularizers.L2(l2),
-        # activity_regularizer=regularizers.L2(1e-5),
-        activation=f_act_2,
-        dropout=0.1,
-        recurrent_dropout=0.1,
-        implementation=2,
-        unit_forget_bias=True, name='lstm_1'
-    )(x, training=True)
-
-    x = Dropout(0.2, name='dropout_2')(x, training=True)
-
-    x = LSTM(
-        hidden,
-        input_shape=(look_back, features),
-        stateful=False,
-        batch_input_shape=(batch_size, look_back, features),
-        return_sequences=False,
-        kernel_regularizer=regularizers.L1L2(l1=l1, l2=l2),
-        bias_regularizer=regularizers.L2(l2),
-        # activity_regularizer=regularizers.L2(1e-5),
-        activation=f_act_2,
-        dropout=0.1,
-        recurrent_dropout=0.1,
-        implementation=2,
-        unit_forget_bias=True, name='lstm_2'
-    )(x, training=True)
-
-    x = Dropout(0.2, name='dropout_3')(x, training=True)
-
-    out = Dense(
-        predict_n,
-        activation="relu",
-        activity_regularizer=regularizers.L2(l2),
-        kernel_initializer="random_uniform",
-        bias_initializer="zeros",
-        name='dense'
-    )(x)
-    model = keras.Model(inp, out)
-
-    base_model = keras.models.load_model(filename, compile=True)
-
-    model.set_weights(weights=base_model.get_weights())
+    model.set_weights(weights = base_model.get_weights())       
 
     start = time()
     optimizer = keras.optimizers.legacy.Adam(learning_rate=lr)
@@ -426,16 +327,15 @@ def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None,
     return model, hist, metrics_train, metrics_val
 
 
-def make_pred(model, city, doenca, epochs, ini_date=None, end_train_date=None,
-              end_date=None, ratio=0.75,
+def train_model(model, city, doenca, ini_date = None, end_train_date = None, 
+                 end_date = None,ratio= 0.75, epochs = 100,
               predict_n=4, look_back=4, batch_size=4,
-              label='model', filename=None, verbose=1):
+                  label = 'model', filename = None,verbose = 0):
     """
     The parameters ended with the word `date` are used to apply the model in different time periods. 
     :param model: tensorflow model. 
     :param city: int. IBGE code of the city. 
     :param doenca: string. Is used to name the trained model. 
-    :param epochs: int. 
     :param ratio: float. Percentage of the data used to train and test steps. 
     :param ini_date: string or None. Determines after which day the data will be used 
     :param end_train_date: string or None. Determines the last day used to train the data. 
@@ -451,36 +351,18 @@ def make_pred(model, city, doenca, epochs, ini_date=None, end_train_date=None,
                                                                end_date=end_date, end_train_date=end_train_date,
                                                                ratio=ratio, look_back=look_back,
                                                                predict_n=predict_n, filename=filename)
-
+    
     model, hist, m_train, m_val = train(model, X_train, Y_train, label=label, batch_size=batch_size, epochs=epochs,
                                         geocode=city, overwrite=True, validation_split=0.25, monitor='val_loss',
                                         verbose=verbose, doenca=doenca)
 
-    pred = evaluate(model, X_pred, batch_size)
-
-    df_pred = pd.DataFrame(np.percentile(pred, 50, axis=2))
-    df_pred25 = pd.DataFrame(np.percentile(pred, 2.5, axis=2))
-    df_pred975 = pd.DataFrame(np.percentile(pred, 97.5, axis=2))
-
-    with open(f'{MAIN_FOLDER}/predictions/lstm/lstm_{city}_{doenca}_{label}.pkl', 'wb') as f:
-        pickle.dump({'xdata': X_train, 'indice': list(df.index), 'target': Y_pred, 'pred': df_pred, 'ub': df_pred975,
+    return model, hist, m_train, m_val   
                      'lb': df_pred25,
-                     'factor': factor, 'city': city,
-                     'ensemble': pred}, f)
-
-    indice = list(df.index)
-    indice = [i.date() for i in indice]
-
-    plot_train_test(indice, Y_pred, factor, df_pred, df_pred25, df_pred975, len(X_train), city)
-
-    metrics = calculate_metrics(np.percentile(pred, 50, axis=2), Y_pred, factor)
-
-    return metrics, hist, m_train, m_val
 
 
-def apply_dengue_chik(city, ini_date='2021-01-01', end_train_date=None,
+def apply_model(city, ini_date = '2021-01-01', end_train_date = None, 
                       end_date='2022-01-01', look_back=4, batch_size=1,
-                      predict_n=4, label_m=f'dengue_train_base', filename=None, ratio=1):
+                     predict_n = 4,  model_name = f'dengue_train_base', label_pred = 'dengue_pred', filename = None, ratio = 1, plot = True): 
     """
     Function to apply a model trained with dengue data using chik data. 
     """
@@ -490,37 +372,37 @@ def apply_dengue_chik(city, ini_date='2021-01-01', end_train_date=None,
                                                                ratio=ratio, look_back=look_back,
                                                                predict_n=predict_n, filename=filename)
 
-    model_dengue = keras.models.load_model(f'{MAIN_FOLDER}/saved_models/lstm/trained_{city}_dengue_{label_m}.h5',
+    model = keras.models.load_model(f'{MAIN_FOLDER}/saved_models/lstm/{model_name}.h5',  compile =False)
                                            compile=False)
 
-    pred_chik = evaluate(model_dengue, X_pred, batch_size)
+    pred = evaluate(model, X_pred, batch_size)
 
-    df_pred_chik = pd.DataFrame(np.percentile(pred_chik, 50, axis=2))
-    df_pred25_chik = pd.DataFrame(np.percentile(pred_chik, 2.5, axis=2))
-    df_pred975_chik = pd.DataFrame(np.percentile(pred_chik, 97.5, axis=2))
+    df_pred = pd.DataFrame(np.percentile(pred, 50, axis=2))
+    df_pred25 = pd.DataFrame(np.percentile(pred, 2.5, axis=2))
+    df_pred975 = pd.DataFrame(np.percentile(pred, 97.5, axis=2))
 
-    with open(f'{MAIN_FOLDER}/predictions/lstm/lstm_{city}_chik_predictions_{label_m}.pkl', 'wb') as f:
-        pickle.dump({'indice': list(df.index), 'target': Y_pred, 'pred': df_pred_chik, 'ub': df_pred975_chik,
-                     'lb': df_pred25_chik,
+    with open(f'{MAIN_FOLDER}/predictions/lstm/lstm_{city}_{label_pred}.pkl', 'wb') as f:
+        pickle.dump({'indice': list(df.index)  , 'target': Y_pred,  'pred': df_pred, 'ub': df_pred975,  
+                     'lb':df_pred25, 
                      'factor': factor, 'city': city,
-                     'ensemble': pred_chik
+                    'ensemble': pred 
                      }, f)
 
     indice = list(df.index)
     indice = [i.date() for i in indice]
 
-    plot_train_test(indice, Y_pred, factor, df_pred_chik, df_pred25_chik, df_pred975_chik, len(X_train), city)
+    if plot:
+        plot_train_test(indice,  Y_pred, factor, df_pred, df_pred25, df_pred975, len(X_train), city)                    
 
-    metrics = calculate_metrics(np.percentile(pred_chik, 50, axis=2), Y_pred, factor)
+    metrics = calculate_metrics(np.percentile(pred, 50, axis=2), Y_pred, factor)
 
     return metrics
 
 
-def transf_chik_pred(model, city, ini_date='2021-01-01', end_train_date='2021-03-01',
+def transf_chik(model, city, ini_date = '2021-01-01', end_train_date = '2021-03-01',  
                      end_date='2022-12-31', ratio=0.75, epochs=100,
                      predict_n=4, look_back=4, batch_size=1, validation_split=0.15, monitor='loss', min_delta=0.01,
-                     patience=30,
-                     label=f'transf_chik', filename_data=None, verbose=0):
+                            label = f'transf', filename_data = None, verbose = 0): 
     """
     Function to apply the transfer learning loading a model trained with dengue data and retraining it using the chik data. 
     """
@@ -534,25 +416,8 @@ def transf_chik_pred(model, city, ini_date='2021-01-01', end_train_date='2021-03
 
     model, hist, metrics_train, metrics_val = train(model=model, X_train=X_train, Y_train=Y_train, label=label,
                                                     epochs=epochs, geocode=city, overwrite=True,
-                                                    validation_split=validation_split, patience=patience,
+         validation_split = validation_split, patience=patience, monitor=monitor, verbose = verbose, min_delta = min_delta, doenca = 'chik')
                                                     monitor=monitor, verbose=verbose, min_delta=min_delta)
 
-    pred = evaluate(model, X_pred, batch_size)
 
-    df_pred = pd.DataFrame(np.percentile(pred, 50, axis=2))
-    df_pred25 = pd.DataFrame(np.percentile(pred, 2.5, axis=2))
-    df_pred975 = pd.DataFrame(np.percentile(pred, 97.5, axis=2))
-
-    indice = list(df.index)
-    indice = [i.date() for i in indice]
-
-    with open(f'{MAIN_FOLDER}/predictions/lstm/tl_{city}_chik_{label}.pkl', 'wb') as f:
-        pickle.dump({'indice': indice, 'target': Y_pred, 'pred': df_pred, 'lb': df_pred25, 'ub': df_pred975,
-                     'factor': factor, 'city': city, 'train_size': len(Y_train),
-                     'ensemble': pred}, f)
-
-    plot_train_test(indice, Y_pred, factor, df_pred, df_pred25, df_pred975, len(X_train), city)
-
-    metrics = calculate_metrics(np.percentile(pred, 50, axis=2), Y_pred, factor)
-
-    return metrics, hist, metrics_train, metrics_val
+    return hist, metrics_train, metrics_val
