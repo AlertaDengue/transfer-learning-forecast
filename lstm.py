@@ -291,7 +291,7 @@ def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None,
                                                   restore_best_weights=True)]
         )
 
-        model.save(f"{MAIN_FOLDER}/saved_models/lstm/trained_{geocode}_{doenca}_{label}.h5", overwrite=overwrite)
+        model.save(f"{MAIN_FOLDER}/saved_models/lstm/trained_{geocode}_{doenca}_{label}.keras", overwrite=overwrite)
 
         pred_train = np.percentile(
             np.stack([model.predict(X_train, batch_size=batch_size, verbose=0) for i in range(100)], axis=2), 50,
@@ -314,7 +314,7 @@ def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None,
             callbacks=[TB_callback, EarlyStopping(monitor=monitor, min_delta=min_delta, patience=patience)]
         )
 
-        model.save(f"{MAIN_FOLDER}/saved_models/lstm/trained_{geocode}_{doenca}_{label}.h5", overwrite=overwrite)
+        model.save(f"{MAIN_FOLDER}/saved_models/lstm/trained_{geocode}_{doenca}_{label}.keras", overwrite=overwrite)
 
         pred_train = np.percentile(
             np.stack([model.predict(X_train, batch_size=batch_size, verbose=0) for i in range(100)], axis=2), 50,
@@ -372,7 +372,7 @@ def apply_model(city, ini_date='2021-01-01', end_train_date=None,
                                                                ratio=ratio, look_back=look_back,
                                                                predict_n=predict_n, filename=filename)
 
-    model = keras.models.load_model(f'{MAIN_FOLDER}/saved_models/lstm/{model_name}.h5', compile=False)
+    model = keras.models.load_model(f'{MAIN_FOLDER}/saved_models/lstm/{model_name}.keras', compile=False)
 
     pred = evaluate(model, X_pred, batch_size)
 
