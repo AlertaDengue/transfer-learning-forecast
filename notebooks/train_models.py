@@ -16,8 +16,8 @@ HIDDEN = 64
 L1 = 1e-5
 L2 = 1e-5
 
-def train_dl_model(city, doenca = 'dengue', end_date_train = '2022-11-01', end_date = '2023-11-01', ini_date = None, plot = True): 
 
+def train_dl_model(city, doenca='dengue', end_date_train='2022-11-01', end_date='2023-11-01', ini_date=None, plot=True):
     FILENAME_DATA = f'../data/{doenca}_{city}_cluster.csv'
     cols = pd.read_csv(FILENAME_DATA, index_col='Unnamed: 0').shape[1]
 
@@ -26,19 +26,17 @@ def train_dl_model(city, doenca = 'dengue', end_date_train = '2022-11-01', end_d
     model = build_model(l1=L1, l2=L2, hidden=HIDDEN, features=FEAT, predict_n=PREDICT_N, look_back=LOOK_BACK,
                         batch_size=BATCH_SIZE, loss='msle', lr=0.0001)
 
-    model, hist, m_train, m_val  = train_model(model, city, doenca =doenca, epochs = EPOCHS, end_train_date = end_date_train, 
-                                                               end_train_date=end_date_train,
-                                                               ini_date=ini_date,
-                                                               ratio=None, end_date=end_date,
-                                                               predict_n=PREDICT_N, look_back=LOOK_BACK, label='msle',
-    if plot: 
-        plot_loss(hist, title = F'Model loss - MSLE - {city}')
-                        batch_size=BATCH_SIZE, loss='msle', lr=0.0001)
-                                                               end_train_date=end_date_train,
-                                                               filename=FILENAME_DATA, verbose=1)
-  
+    model, hist, m_train, m_val = train_model(model, city, doenca=doenca, epochs=EPOCHS, end_train_date=end_date_train,
+                                              ini_date=ini_date,
+                                              ratio=None, end_date=end_date,
+                                              predict_n=PREDICT_N, look_back=LOOK_BACK, label='msle',
+                                              batch_size=BATCH_SIZE,
+                                              filename=FILENAME_DATA, verbose=1)
+    if plot:
+        plot_loss(hist, title=F'Model loss - MSLE - {city}')
 
-def train_transf_chik(city, ini_date, end_date_train, end_date, plot = True): 
+
+def train_transf_chik(city, ini_date, end_date_train, end_date, plot=True):
     FILENAME_DATA = f'../data/chik_{city}_cluster.csv'
 
     BATCH_SIZE = 1
@@ -51,30 +49,33 @@ def train_transf_chik(city, ini_date, end_date_train, end_date, plot = True):
     model = transf_model(filename, L1, L2, HIDDEN, FEAT, PREDICT_N, LOOK_BACK, batch_size=BATCH_SIZE, lr=0.0001)
 
     # apply transf model 
-    hist, m_t, m_val = transf_chik(model, city, ini_date = ini_date, end_train_date = end_date_train,  
-                                                end_date=end_date, epochs=EPOCHS,
-                                                predict_n=PREDICT_N, look_back=LOOK_BACK, validation_split=0.0,
-                                                monitor='loss',
-                                                patience=10, min_delta=0.001,
-                                    label = f'transf_msle', ratio = None, filename_data = FILENAME_DATA,  verbose=0)
+    hist, m_t, m_val = transf_chik(model, city, ini_date=ini_date, end_train_date=end_date_train,
+                                   end_date=end_date, epochs=EPOCHS,
+                                   predict_n=PREDICT_N, look_back=LOOK_BACK, validation_split=0.0,
+                                   monitor='loss',
+                                   min_delta=0.001,
+                                   label=f'transf_msle', ratio=None, filename_data=FILENAME_DATA, verbose=0)
 
-    if plot: 
-        plot_loss(hist, title = f'Model loss - MSLE - {city}')
+    if plot:
+        plot_loss(hist, title=f'Model loss - MSLE - {city}')
 
 
 def train_pgbm_model(city, doenca, ini_date, end_date_train, end_date):
-   FILENAME_DATA = f'../data/{doenca}_{city}_cluster.csv'
-                                                           ini_date=ini_date, end_train_date=end_date_train,
-                                                           end_date=end_date, filename=FILENAME_DATA, verbose=1)
+    FILENAME_DATA = f'../data/{doenca}_{city}_cluster.csv'
+    # ini_date=ini_date, end_train_date=end_date_train,
+    # end_date=end_date, filename=FILENAME_DATA, verbose=1)
+    #
+    #                   look_back=LOOK_BACK, ini_date=ini_date,
+    #                   end_date=end_date, filename=FILENAME_DATA)
 
-                                                                             look_back=LOOK_BACK, ini_date=ini_date,
-                                                                             end_date=end_date, filename=FILENAME_DATA)
+    pgbm_train(city, PREDICT_N, LOOK_BACK, doenca=doenca, ini_date=ini_date, end_train_date=end_date_train,
+               end_date=end_date, filename=FILENAME_DATA, verbose=0)
 
-   pgbm_train(city, PREDICT_N, LOOK_BACK, doenca = doenca, ini_date = ini_date, end_train_date = end_date_train, end_date = end_date,  filename = FILENAME_DATA, verbose = 0)
 
-def apply_dengue_pgbm_on_chik(city, ini_date, end_date, plot = True):
+def apply_dengue_pgbm_on_chik(city, ini_date, end_date, plot=True):
     FILENAME_DATA = f'../data/chik_{city}_cluster.csv'
-    preds, preds25, preds975, X_data, targets = cross_dengue_chik_prediction(city, predict_n = PREDICT_N, look_back = LOOK_BACK, ini_date = ini_date, end_date = end_date, filename = FILENAME_DATA, plot = plot)
-    
+    preds, preds25, preds975, X_data, targets = cross_dengue_chik_prediction(city, predict_n=PREDICT_N,
+                                                                             look_back=LOOK_BACK, ini_date=ini_date,
+                                                                             end_date=end_date, filename=FILENAME_DATA,
+                                                                                plot=plot)
 
-                                                           end_date=end_date, filename=FILENAME_DATA)

@@ -101,7 +101,7 @@ def build_model(l1=1e-5, l2=1e-5, hidden=8, features=100, predict_n=4, look_back
         # activity_regularizer=regularizers.L2(1e-5),
         activation=f_act_1,
         dropout=0.1,
-        recurrent_dropout=0.1,
+        recurrent_dropout=0,
         implementation=2,
         unit_forget_bias=True,
     ), merge_mode='ave', name='bidirectional_1')(inp, training=True)
@@ -119,7 +119,7 @@ def build_model(l1=1e-5, l2=1e-5, hidden=8, features=100, predict_n=4, look_back
         # activity_regularizer=regularizers.L2(1e-5),
         activation=f_act_2,
         dropout=0.1,
-        recurrent_dropout=0.1,
+        recurrent_dropout=0,
         implementation=2,
         unit_forget_bias=True, name='lstm_1'
     )(x, training=True)
@@ -137,7 +137,7 @@ def build_model(l1=1e-5, l2=1e-5, hidden=8, features=100, predict_n=4, look_back
         # activity_regularizer=regularizers.L2(1e-5),
         activation=f_act_2,
         dropout=0.1,
-        recurrent_dropout=0.1,
+        recurrent_dropout=0,
         implementation=2,
         unit_forget_bias=True, name='lstm_2'
     )(x, training=True)
@@ -183,7 +183,7 @@ def transf_model(filename, l1, l2, hidden, features, predict_n, look_back=10, ba
         # activity_regularizer=regularizers.L2(1e-5),
         activation=f_act_1,
         dropout=0.1,
-        recurrent_dropout=0.1,
+        recurrent_dropout=0,
         implementation=2,
         unit_forget_bias=True,
     ), merge_mode='ave', name='bidirectional_1')(inp, training=True)
@@ -201,7 +201,7 @@ def transf_model(filename, l1, l2, hidden, features, predict_n, look_back=10, ba
         # activity_regularizer=regularizers.L2(1e-5),
         activation=f_act_2,
         dropout=0.1,
-        recurrent_dropout=0.1,
+        recurrent_dropout=0,
         implementation=2,
         unit_forget_bias=True, name='lstm_1'
     )(x, training=True)
@@ -219,7 +219,7 @@ def transf_model(filename, l1, l2, hidden, features, predict_n, look_back=10, ba
         # activity_regularizer=regularizers.L2(1e-5),
         activation=f_act_2,
         dropout=0.1,
-        recurrent_dropout=0.1,
+        recurrent_dropout=0,
         implementation=2,
         unit_forget_bias=True, name='lstm_2'
     )(x, training=True)
@@ -238,7 +238,7 @@ def transf_model(filename, l1, l2, hidden, features, predict_n, look_back=10, ba
 
     base_model = keras.models.load_model(filename, compile=True)
 
-    model.set_weights(weights = base_model.get_weights())       
+    model.set_weights(weights=base_model.get_weights())
 
     start = time()
     optimizer = keras.optimizers.legacy.Adam(learning_rate=lr)
@@ -327,10 +327,10 @@ def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None,
     return model, hist, metrics_train, metrics_val
 
 
-def train_model(model, city, doenca, ini_date = None, end_train_date = None, 
-                 end_date = None,ratio= 0.75, epochs = 100,
-              predict_n=4, look_back=4, batch_size=4,
-                  label = 'model', filename = None,verbose = 0):
+def train_model(model, city, doenca, ini_date=None, end_train_date=None,
+                end_date=None, ratio=0.75, epochs=100,
+                predict_n=4, look_back=4, batch_size=4,
+                label='model', filename=None, verbose=0):
     """
     The parameters ended with the word `date` are used to apply the model in different time periods. 
     :param model: tensorflow model. 
@@ -351,18 +351,18 @@ def train_model(model, city, doenca, ini_date = None, end_train_date = None,
                                                                end_date=end_date, end_train_date=end_train_date,
                                                                ratio=ratio, look_back=look_back,
                                                                predict_n=predict_n, filename=filename)
-    
+
     model, hist, m_train, m_val = train(model, X_train, Y_train, label=label, batch_size=batch_size, epochs=epochs,
                                         geocode=city, overwrite=True, validation_split=0.25, monitor='val_loss',
                                         verbose=verbose, doenca=doenca)
 
-    return model, hist, m_train, m_val   
-                     'lb': df_pred25,
+    return model, hist, m_train, m_val
 
 
-def apply_model(city, ini_date = '2021-01-01', end_train_date = None, 
-                      end_date='2022-01-01', look_back=4, batch_size=1,
-                     predict_n = 4,  model_name = f'dengue_train_base', label_pred = 'dengue_pred', filename = None, ratio = 1, plot = True): 
+def apply_model(city, ini_date='2021-01-01', end_train_date=None,
+                end_date='2022-01-01', look_back=4, batch_size=1,
+                predict_n=4, model_name=f'dengue_train_base', label_pred='dengue_pred', filename=None, ratio=1,
+                plot=True):
     """
     Function to apply a model trained with dengue data using chik data. 
     """
@@ -372,8 +372,7 @@ def apply_model(city, ini_date = '2021-01-01', end_train_date = None,
                                                                ratio=ratio, look_back=look_back,
                                                                predict_n=predict_n, filename=filename)
 
-    model = keras.models.load_model(f'{MAIN_FOLDER}/saved_models/lstm/{model_name}.h5',  compile =False)
-                                           compile=False)
+    model = keras.models.load_model(f'{MAIN_FOLDER}/saved_models/lstm/{model_name}.h5', compile=False)
 
     pred = evaluate(model, X_pred, batch_size)
 
@@ -382,31 +381,32 @@ def apply_model(city, ini_date = '2021-01-01', end_train_date = None,
     df_pred975 = pd.DataFrame(np.percentile(pred, 97.5, axis=2))
 
     with open(f'{MAIN_FOLDER}/predictions/lstm/lstm_{city}_{label_pred}.pkl', 'wb') as f:
-        pickle.dump({'indice': list(df.index)  , 'target': Y_pred,  'pred': df_pred, 'ub': df_pred975,  
-                     'lb':df_pred25, 
+        pickle.dump({'indice': list(df.index), 'target': Y_pred, 'pred': df_pred, 'ub': df_pred975,
+                     'lb': df_pred25,
                      'factor': factor, 'city': city,
-                    'ensemble': pred 
+                     'ensemble': pred
                      }, f)
 
     indice = list(df.index)
     indice = [i.date() for i in indice]
 
     if plot:
-        plot_train_test(indice,  Y_pred, factor, df_pred, df_pred25, df_pred975, len(X_train), city)                    
+        plot_train_test(indice, Y_pred, factor, df_pred, df_pred25, df_pred975, len(X_train), city)
 
     metrics = calculate_metrics(np.percentile(pred, 50, axis=2), Y_pred, factor)
+
 
     return metrics
 
 
-def transf_chik(model, city, ini_date = '2021-01-01', end_train_date = '2021-03-01',  
-                     end_date='2022-12-31', ratio=0.75, epochs=100,
-                     predict_n=4, look_back=4, batch_size=1, validation_split=0.15, monitor='loss', min_delta=0.01,
-                            label = f'transf', filename_data = None, verbose = 0): 
+def transf_chik(model, city, ini_date='2021-01-01', end_train_date='2021-03-01',
+                end_date='2022-12-31', ratio=0.75, epochs=100,
+                predict_n=4, look_back=4, batch_size=1, validation_split=0.15, monitor='loss', min_delta=0.01,
+                label=f'transf', filename_data=None, verbose=0):
     """
     Function to apply the transfer learning loading a model trained with dengue data and retraining it using the chik data. 
     """
-
+    patience=10
     df, factor, X_train, Y_train, X_pred, Y_pred = get_nn_data(city, ini_date=ini_date,
                                                                end_date=end_date, end_train_date=end_train_date,
                                                                ratio=ratio, look_back=look_back,
@@ -416,8 +416,10 @@ def transf_chik(model, city, ini_date = '2021-01-01', end_train_date = '2021-03-
 
     model, hist, metrics_train, metrics_val = train(model=model, X_train=X_train, Y_train=Y_train, label=label,
                                                     epochs=epochs, geocode=city, overwrite=True,
-         validation_split = validation_split, patience=patience, monitor=monitor, verbose = verbose, min_delta = min_delta, doenca = 'chik')
-                                                    monitor=monitor, verbose=verbose, min_delta=min_delta)
+                                                    validation_split=validation_split, patience=patience,
+                                                    monitor=monitor, verbose=verbose, min_delta=min_delta,
+                                                    doenca='chik')
+
 
 
     return hist, metrics_train, metrics_val
