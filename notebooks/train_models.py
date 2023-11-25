@@ -45,7 +45,7 @@ def train_transf_chik(city, ini_date, end_date_train, end_date, plot=True):
 
     FEAT = int((1 + 1 / 16) * cols) + 2  # number of features
 
-    filename = f'../saved_models/lstm/trained_{city}_dengue_msle.h5'
+    filename = f'../saved_models/lstm/trained_{city}_dengue_msle.keras'
     model = transf_model(filename, L1, L2, HIDDEN, FEAT, PREDICT_N, LOOK_BACK, batch_size=BATCH_SIZE, lr=0.0001)
 
     # apply transf model 

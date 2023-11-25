@@ -51,7 +51,7 @@ def pgbm_pred(city, predict_n, look_back, doenca = 'dengue', ratio = 0.75, ini_d
         tgt = targets[d][:len(X_train)]
 
         model = joblib.load( f'{MAIN_FOLDER}/saved_models/pgbm/{city}_{doenca}_{d}_pgbm.pt')
-        model = HistGradientBoostingRegressor(distribution='poisson', verbose = verbose)
+        # model = HistGradientBoostingRegressor(distribution='poisson', verbose = False)
 
         pred, pred_std = model.predict(X_data[:len(targets[d])].values, return_std=True)
         
