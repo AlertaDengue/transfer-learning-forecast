@@ -26,6 +26,7 @@ psycopg2-binary = "^2.9.9"
 pydot = "^1.4.2"
 protobuf = "*"
 tensorboard = "*"
+properscoring = "^0.1"
 
 
 [build-system]
