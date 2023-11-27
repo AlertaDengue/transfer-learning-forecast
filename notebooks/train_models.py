@@ -9,7 +9,7 @@ from lstm import build_model, transf_chik, transf_model
 from pgbm_model import pgbm_train, cross_dengue_chik_prediction
 
 PREDICT_N = 4  # number of new days predicted
-LOOK_BACK = 52  # number of last days used to make the prediction
+LOOK_BACK = 4  # number of last days used to make the prediction
 BATCH_SIZE = 1
 EPOCHS = 250
 HIDDEN = 64
