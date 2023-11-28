@@ -1,0 +1,1 @@
+comparison scores for lstm as JSON files
