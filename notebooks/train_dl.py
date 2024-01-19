@@ -7,7 +7,7 @@ from train_models import train_dl_model, train_transf_chik
 import os
 
 
-df = pd.read_csv('selected_cities.csv', index_col = 'Unnamed: 0')
+df = pd.read_csv('s_cities.csv', index_col = 'Unnamed: 0')
 
 end_date = '2023-11-01'
 RETRAIN = True

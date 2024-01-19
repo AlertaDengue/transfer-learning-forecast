@@ -125,7 +125,7 @@ def build_model(l1=1e-5, l2=1e-5, hidden=8, features=100, predict_n=4, look_back
     )(x, training=True)
 
     x = Dropout(0.2, name='dropout_2')(x, training=True)
-
+    
     x = LSTM(
         hidden,
         input_shape=(look_back, features),
@@ -240,6 +240,30 @@ def transf_model(filename, l1, l2, hidden, features, predict_n, look_back=10, ba
 
     model.set_weights(weights=base_model.get_weights())
 
+    #model.trainable = False  # Freeze the outer model
+
+    for layer in model.layers : 
+        name = layer.name
+
+        if ((name == 'dense') or (name == 'lstm_2')):
+
+            model.get_layer(name).trainable = True
+
+        else: 
+
+            model.get_layer(name).trainable = False
+
+
+    start = time()
+    optimizer = keras.optimizers.Adam(learning_rate = lr)
+    #optimizer = tf.keras.optimizers.experimental.SGD(learning_rate=0.0001)
+
+    model.compile(loss = loss, optimizer=optimizer, metrics=["accuracy", "mape", "mse"])
+    print("Compilation Time : ", time() - start)
+    plot_model(model, to_file="LSTM_model.png")
+    print(model.summary())
+    return model
+
     start = time()
     optimizer = keras.optimizers.legacy.Adam(learning_rate=lr)
     # optimizer = tf.keras.optimizers.experimental.SGD(learning_rate=0.0001)
@@ -252,7 +276,7 @@ def transf_model(filename, l1, l2, hidden, features, predict_n, look_back=10, ba
 
 
 def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None, overwrite=True, validation_split=0.25,
-          patience=50, monitor='val_loss', min_delta=0.025, verbose=1, doenca='dengue'):
+          patience=20, monitor='val_loss', min_delta=0.00, verbose=1, doenca='dengue'):
     """
     Train the lstm model 
     :param model: LSTM model compiled and created with the build_model function 
@@ -293,15 +317,15 @@ def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None,
 
         model.save(f"{MAIN_FOLDER}/saved_models/lstm/trained_{geocode}_{doenca}_{label}.keras", overwrite=overwrite)
 
-        pred_train = np.percentile(
-            np.stack([model.predict(X_train, batch_size=batch_size, verbose=0) for i in range(100)], axis=2), 50,
-            axis=2)
-        pred_test = np.percentile(
-            np.stack([model.predict(X_test, batch_size=batch_size, verbose=0) for i in range(100)], axis=2), 50, axis=2)
+        #pred_train = np.percentile(
+         #   np.stack([model.predict(X_train, batch_size=batch_size, verbose=0) for i in range(100)], axis=2), 50,
+          #  axis=2)
+        #pred_test = np.percentile(
+         #   np.stack([model.predict(X_test, batch_size=batch_size, verbose=0) for i in range(100)], axis=2), 50, axis=2)
 
-        metrics_train = calculate_metrics(pred_train, Y_train, 1)
+        #metrics_train = calculate_metrics(pred_train, Y_train, 1)
 
-        metrics_val = calculate_metrics(pred_test, Y_test, 1)
+        #metrics_val = calculate_metrics(pred_test, Y_test, 1)
 
     else:
 
@@ -316,21 +340,21 @@ def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None,
 
         model.save(f"{MAIN_FOLDER}/saved_models/lstm/trained_{geocode}_{doenca}_{label}.keras", overwrite=overwrite)
 
-        pred_train = np.percentile(
-            np.stack([model.predict(X_train, batch_size=batch_size, verbose=0) for i in range(100)], axis=2), 50,
-            axis=2)
+        #pred_train = np.percentile(
+         #   np.stack([model.predict(X_train, batch_size=batch_size, verbose=0) for i in range(100)], axis=2), 50,
+          #  axis=2)
 
-        metrics_train = calculate_metrics(pred_train, Y_train, 1)
+        #metrics_train = calculate_metrics(pred_train, Y_train, 1)
 
-        metrics_val = pd.DataFrame()
+        #metrics_val = pd.DataFrame()
 
-    return model, hist, metrics_train, metrics_val
+    return model, hist
 
 
 def train_model(model, city, doenca, ini_date=None, end_train_date=None,
                 end_date=None, ratio=0.75, epochs=100,
                 predict_n=4, look_back=4, batch_size=4,
-                label='model', filename=None, verbose=0):
+                label='model', filename=None, verbose=0, patience = 50, min_delta = 0.002):
     """
     The parameters ended with the word `date` are used to apply the model in different time periods. 
     :param model: tensorflow model. 
@@ -352,11 +376,12 @@ def train_model(model, city, doenca, ini_date=None, end_train_date=None,
                                                                ratio=ratio, look_back=look_back,
                                                                predict_n=predict_n, filename=filename)
 
-    model, hist, m_train, m_val = train(model, X_train, Y_train, label=label, batch_size=batch_size, epochs=epochs,
+    model, hist = train(model, X_train, Y_train, label=label, batch_size=batch_size, epochs=epochs,
                                         geocode=city, overwrite=True, validation_split=0.25, monitor='val_loss',
-                                        verbose=verbose, doenca=doenca)
+                                        verbose=verbose, doenca=doenca,
+                                        min_delta = min_delta, patience=patience)
 
-    return model, hist, m_train, m_val
+    return model, hist
 
 
 def apply_model(city, ini_date='2021-01-01', end_train_date=None,
@@ -414,7 +439,7 @@ def transf_chik(model, city, ini_date='2021-01-01', end_train_date='2021-03-01',
 
     print('X_train:', X_train.shape)
 
-    model, hist, metrics_train, metrics_val = train(model=model, X_train=X_train, Y_train=Y_train, label=label,
+    model, hist = train(model=model, X_train=X_train, Y_train=Y_train, label=label,
                                                     epochs=epochs, geocode=city, overwrite=True,
                                                     validation_split=validation_split, patience=patience,
                                                     monitor=monitor, verbose=verbose, min_delta=min_delta,
@@ -422,4 +447,4 @@ def transf_chik(model, city, ini_date='2021-01-01', end_train_date='2021-03-01',
 
 
 
-    return hist, metrics_train, metrics_val
+    return hist

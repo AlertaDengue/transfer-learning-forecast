@@ -83,11 +83,21 @@ def normalize_data(df, log_transform=False, ratio = 0.75, end_train_date = None)
         #print(date)
         weeks.append(Week.fromdate(date).weektuple()[1])
         #print(Week.fromdate(date).weektuple()[1])
-        #break     
-
+        #break  
+        
     df['SE'] = weeks
     
     df.loc[df.index == '2018-04-04', 'SE'] = 15
+     
+    diff_series = [df]
+        
+    for i in df.columns:
+
+        if i.startswith('casos_'):
+                
+            diff_series.append(pd.DataFrame(data = np.diff(df[f'{i}'], 1), index = df.index[1:], columns = [f'diff_{i}']))
+
+    df = pd.concat(diff_series, axis = 1, join = 'outer')    
 
     if 'municipio_geocodigo' in df.columns:
         df.pop('municipio_geocodigo')
@@ -146,14 +156,6 @@ def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, r
         norm_df, max_features = normalize_data(df, ratio = ratio)
         factor = max_features[target_col]
 
-        for i in norm_df.columns:
-
-            if i.startswith('casos_'):
-
-                norm_df[f'diff_{i}'] = np.concatenate(([np.nan], np.diff(norm_df[f'{i}'], 1)), axis = 0)
-                #norm_df[f'diff_2_{i}'] = np.concatenate(([np.nan, np.nan], np.diff(norm_df[f'{i}'], 2)), axis = 0)
-        
-
         X_train, Y_train, X_test, Y_test = split_data(
                 norm_df,
                 look_back= look_back,
@@ -172,11 +174,7 @@ def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, r
         #print(norm_df.index[0])
         factor = max_features[target_col]
 
-        for i in norm_df.columns:
-
-            if i.startswith('casos_'):
-
-                norm_df[f'diff_{i}'] = np.concatenate(([np.nan], np.diff(norm_df[f'{i}'], 1)), axis = 0)
+ 
                 #norm_df[f'diff_2_{i}'] = np.concatenate(([np.nan, np.nan], np.diff(norm_df[f'{i}'], 2)), axis = 0)
         
 
@@ -201,7 +199,7 @@ def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, r
                     Y_column=target_col,
             ) 
 
-    return df,factor,  X_train, Y_train, X_pred, Y_pred
+    return norm_df,factor,  X_train, Y_train, X_pred, Y_pred
 
 
 def get_ml_data(city, ini_date, end_train_date, end_date, ratio, predict_n, look_back, filename = None):
