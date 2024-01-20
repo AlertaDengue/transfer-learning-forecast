@@ -136,12 +136,16 @@ def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, r
 
     """
     df = pd.read_csv(filename, index_col = 'Unnamed: 0' )
-    df.index = pd.to_datetime(df.index)  
+    df.index = pd.to_datetime(df.index)
 
     try:
-        target_col = list(df.columns).index("casos")
-    except: 
-        target_col = list(df.columns).index(f"casos_{city}")
+        target_col = list(df.columns).index("casos_est")
+    except ValueError:
+        target_col = list(df.columns).index(f"casos_est_{city}")
+
+    if df.dropna().shape[0] == 0:
+        c = df.columns[df.columns.str.endswith('_small')]
+        df = df.drop(c, axis =1 )
 
     df = df.dropna()
 
@@ -199,7 +203,7 @@ def get_nn_data(city, ini_date = None, end_date = None, end_train_date = None, r
                     Y_column=target_col,
             ) 
 
-    return norm_df,factor,  X_train, Y_train, X_pred, Y_pred
+    return norm_df, factor,  X_train, Y_train, X_pred, Y_pred
 
 
 def get_ml_data(city, ini_date, end_train_date, end_date, ratio, predict_n, look_back, filename = None):

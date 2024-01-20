@@ -295,6 +295,7 @@ def train(model, X_train, Y_train, label, batch_size=1, epochs=10, geocode=None,
         histogram_freq=0,
         write_graph=True,
         write_images=True,
+        update_freq='epoch',
         # embeddings_freq=10
     )
 

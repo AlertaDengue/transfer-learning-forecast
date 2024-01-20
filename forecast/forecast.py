@@ -7,7 +7,11 @@ from datetime import datetime, timedelta
 
 sys.path.append('../')
 from lstm import evaluate
-from preprocessing import normalize_data 
+from preprocessing import normalize_data
+
+
+dfs = pd.read_csv('../macro_saude.csv')
+
 
 def get_geocodes_and_state(macro): 
     '''
@@ -76,11 +80,13 @@ def get_nn_data_for(city, ini_date = None, end_date = None, look_back = 4, predi
     df.index = pd.to_datetime(df.index)  
 
     try:
-        target_col = list(df.columns).index("casos")
+        target_col = list(df.columns).index("casos_est")
     except: 
-        target_col = list(df.columns).index(f"casos_{city}")
+        target_col = list(df.columns).index(f"casos_est_{city}")
 
-    #print('Target column:', target_col)
+    if df.dropna().shape[0] == 0:
+        c = df.columns[df.columns.str.endswith('_small')]
+        df = df.drop(c, axis =1)
 
     df = df.dropna()
 
@@ -197,7 +203,7 @@ def plot_for2(df_data, city, df_pred, df_pred25, df_pred975, ini_date, end_date,
 
     for_dates = get_next_n_weeks(f'{end_date}', 4)
 
-    ax.plot(df_data[ini_date:][f'casos_{city}'], label = 'Data', color = 'black')
+    ax.plot(df_data[ini_date:][f'casos_est_{city}'], label = 'Data', color = 'black')
 
 
     ax.plot(for_dates, df_pred.iloc[-1].values , color = 'tab:red', label = 'Forecast')
@@ -233,7 +239,7 @@ def create_df_for(ini_date_for, predict_n , df_pred, df_pred2_5, df_pred25, df_p
     return df 
 
 
-def plot_for_macro(macro, df_for, df_muni, ini_date = '2022-01-01', filename= None, plot = False):
+def plot_for_macro(macro, df_for, df_muni, ini_date = '2023-01-01', filename= None, plot = False):
 
     geocodes, state = get_geocodes_and_state(macro)
 
@@ -241,9 +247,9 @@ def plot_for_macro(macro, df_for, df_muni, ini_date = '2022-01-01', filename= No
 
     df_data.index = pd.to_datetime(df_data.index)
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize = (8,5))
 
-    ax.plot(df_data[ini_date:][f'casos_{macro}'], label = 'Data', color = 'black')
+    ax.plot(df_data[ini_date:][f'casos_est_{macro}'], label = 'Data', color = 'black')
 
     ax.plot(df_for.date, df_for.forecast , color = 'tab:red', label = 'Forecast')
 
@@ -253,16 +259,18 @@ def plot_for_macro(macro, df_for, df_muni, ini_date = '2022-01-01', filename= No
     ax.fill_between(df_for.date, df_for.lower_25, 
                         df_for.upper_75, color = 'tab:red', alpha = 0.3)
 
-    ax.legend()
+    ax.legend(loc='upper right')
 
     ax.grid()
 
-    ax.set_title(f'Forecast de casos notificados - {macro} - {state}')
+    name_macro = dfs.loc[dfs.code_macro == macro].name_macro.values[0]
+
+    ax.set_title(f'{name_macro} - {state}')
 
     for tick in ax.get_xticklabels():
                 tick.set_rotation(20)
 
-    ax.set_ylabel('Novos casos')
+    ax.set_ylabel('Forecast de casos notificados')
 
     ax.set_xlabel('Data')
 
@@ -276,7 +284,7 @@ def plot_for_macro(macro, df_for, df_muni, ini_date = '2022-01-01', filename= No
     ax2.set_xticks([])
     ax2.set_yticks([])
 
-    plt.savefig(f'./plots/forecast_{macro}_{state}.png', dpi = 300, bbox_inches = 'tight')
+    plt.savefig(f"../plots/forecast_{name_macro.replace('/','-')}_{state}.png", dpi = 300, bbox_inches = 'tight')
 
     if plot:
         plt.show()
@@ -286,6 +294,6 @@ def apply_forecast_macro(macro, ini_date, end_date, look_back, predict_n, filena
      
     df_for = apply_forecast(macro, ini_date, end_date, look_back=look_back, predict_n=predict_n, filename=filename, model_name = model_name)
 
-    plot_for_macro(int(macro), df_for, df_muni, ini_date = '2022-01-01', filename= filename, plot = plot)
+    plot_for_macro(int(macro), df_for, df_muni, ini_date = '2023-01-01', filename= filename, plot = plot)
 
     return df_for
