@@ -18,7 +18,7 @@ LOSS = 'mse'
 
 def train_dl_model(city, doenca='dengue', end_date_train='2022-11-01', ratio=None, end_date='2023-12-31',
                    ini_date=TRAIN_FROM,
-                   plot=True, lr=0.0001, filename_data=f'../data/dengue.csv', patience=40, min_delta=0.01,
+                   plot=True, lr=0.0001, filename_data=f'../data/dengue.csv', patience=50, min_delta=0.01,
                    label=LOSS,
                    look_back=LOOK_BACK, predict_n=PREDICT_N, hidden=HIDDEN, l1=L1, l2=L2, batch_size=BATCH_SIZE,
                    epochs=EPOCHS):
