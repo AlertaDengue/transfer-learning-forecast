@@ -357,6 +357,6 @@ def plot_prob_map(week_idx):
     ax1.set_axis_off()
     ax2.set_title('Previsão probabilística na semana de ' + str(dates[week_idx])[:10])
     ax1.set_title('Limiar superior de Incidência na semana de ' + str(dates[week_idx])[:10])
-    ax2.text(0.1, 0, 'Regiões em cinza, representam previsão compatível com a mediana histórica',
-             transform=ax2.transAxes, fontsize='small')
+    ax2.text(0.1, 0, 'Regiões em cinza, representam previsão compatível com a mediana histórica\n Azul: abaixo do limiar inferior\n Vermelho: acima do limiar superior',
+             transform=ax2.transAxes, fontsize='x-small')
     plt.savefig(f'../plots/prob_map_{dates[week_idx]}.png', dpi=300, bbox_inches='tight')
