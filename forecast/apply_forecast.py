@@ -10,7 +10,7 @@ df_muni = gpd.read_file('../muni_br.gpkg')
 
 dfs = pd.read_csv('../macro_saude.csv')
 ini_date = None
-end_date = '2023-12-31'
+end_date = '2024-01-21'
 # for macro in dfs.loc[dfs.state=='MG'].code_macro.unique():
 for macro in dfs.code_macro.unique():
     print(f'Forecasting: {macro}')
@@ -20,3 +20,5 @@ for macro in dfs.code_macro.unique():
 
     df_for = apply_forecast_macro(macro, ini_date, end_date, look_back=LOOK_BACK, predict_n=PREDICT_N,
                                   filename=filename, model_name=model_name, df_muni=df_muni)
+        
+
