@@ -88,6 +88,8 @@ def get_nn_data_for(city, ini_date=None, end_date=None, look_back=4, predict_n=4
         target_col = list(df.columns).index("casos_est")
     except:
         target_col = list(df.columns).index(f"casos_est_{city}")
+        
+    print(target_col) 
 
     df = df.dropna()
 
@@ -98,6 +100,7 @@ def get_nn_data_for(city, ini_date=None, end_date=None, look_back=4, predict_n=4
         df = df.loc[:end_date]
 
     norm_df, max_features = normalize_data(df, ratio=1)
+    
     factor = max_features[target_col]
 
     X_for = split_data_for(
