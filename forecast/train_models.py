@@ -13,12 +13,12 @@ EPOCHS = 300
 HIDDEN = 16
 L1 = 1e-5
 L2 = 1e-5
-TRAIN_FROM = '2016-01-01'  # Train the models from this date
+TRAIN_FROM = '2015-06-01'  # Train the models from this date
 LOSS = 'msle'
 
 def train_dl_model(city, doenca='dengue', end_date_train='2022-11-01', ratio=None, end_date='2023-12-31',
                    ini_date=TRAIN_FROM,
-                   plot=True, lr=0.0001, filename_data=f'../data/dengue.csv', patience=50, min_delta=0.01,
+                   plot=True, lr=0.001, filename_data=f'../data/dengue.csv', patience=50, min_delta=0.01,
                    label=LOSS,
                    look_back=LOOK_BACK, predict_n=PREDICT_N, hidden=HIDDEN, l1=L1, l2=L2, batch_size=BATCH_SIZE,
                    epochs=EPOCHS):

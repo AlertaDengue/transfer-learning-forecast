@@ -89,7 +89,7 @@ def get_nn_data_for(city, ini_date=None, end_date=None, look_back=4, predict_n=4
     except:
         target_col = list(df.columns).index(f"casos_est_{city}")
         
-    print(target_col) 
+    #print(target_col) 
 
     df = df.dropna()
 
@@ -203,52 +203,44 @@ def apply_forecast(city, ini_date, end_date, look_back, predict_n, filename, mod
     return df
 
 
-def plot_for(df_data, city, df_pred, df_pred25, df_pred975, ini_date, end_date, target_name, title):
-    fig, ax = plt.subplots()
+def plot_for(filename, region, df_for, ini_date, plot = False):
 
-    for_dates = get_next_n_weeks(f'{end_date}', 4)
+    fig, ax = plt.subplots(figsize=(8, 5))
 
-    ax.plot(df_data[ini_date:][f'{target_name}_{city}'], label='Data', color='black')
+    df_data = pd.read_csv(filename, index_col='Unnamed: 0')
 
-    ax.plot(for_dates, df_pred.iloc[-1].values, color='tab:red', label='Forecast')
+    df_data.index = pd.to_datetime(df_data.index)
 
-    ax.fill_between(for_dates, df_pred25.iloc[-1].values,
-                    df_pred975.iloc[-1].values, color='tab:red', alpha=0.3)
+    ax.plot(df_data[ini_date:][f'casos_est_{region}'], label='Data', color='black')
 
-    ax.legend()
+    ax.plot(df_for.date, df_for.forecast, color='tab:red', label='Forecast')
 
-    ax.grid()
+    ax.fill_between(df_for.date, df_for.lower_2_5,
+                    df_for.upper_97_5, color='tab:red', alpha=0.3)
 
-    ax.set_title(f'Forecast {title}')
-
-    for tick in ax.get_xticklabels():
-        tick.set_rotation(45)
-
-    plt.show()
-
-
-def plot_for2(df_data, city, df_pred, df_pred25, df_pred975, ini_date, end_date, target_name, title):
-    fig, ax = plt.subplots()
-
-    for_dates = get_next_n_weeks(f'{end_date}', 4)
-
-    ax.plot(df_data[ini_date:][f'casos_est_{city}'], label='Data', color='black')
-
-    ax.plot(for_dates, df_pred.iloc[-1].values, color='tab:red', label='Forecast')
-
-    ax.fill_between(for_dates, df_pred25.iloc[-1].values,
-                    df_pred975.iloc[-1].values, color='tab:red', alpha=0.3)
+    ax.fill_between(df_for.date, df_for.lower_25,
+                    df_for.upper_75, color='tab:red', alpha=0.3)
 
     ax.legend()
 
     ax.grid()
 
-    ax.set_title(f'Forecast {title}')
+    ax.set_title(f'{region}')
 
     for tick in ax.get_xticklabels():
-        tick.set_rotation(45)
+        tick.set_rotation(20)
 
-    plt.show()
+    ax.set_ylabel('Forecast de casos notificados')
+
+    ax.set_xlabel('Data')
+
+    plt.savefig(f"./plots/forecast_{region}.png", dpi=300, bbox_inches='tight')
+
+    if plot:
+        plt.show()
+
+
+
 
 
 def create_df_for(ini_date_for, predict_n, df_pred, df_pred2_5, df_pred25, df_pred75, df_pred975):
@@ -310,7 +302,7 @@ def plot_for_macro(macro, df_for, df_muni, ini_date='2023-01-01', filename=None,
     ax2.set_xticks([])
     ax2.set_yticks([])
 
-    plt.savefig(f"../plots/forecast_{name_macro.replace('/', '-')}_{state}.png", dpi=300, bbox_inches='tight')
+    plt.savefig(f"./plots/forecast_{name_macro.replace('/', '-')}_{state}.png", dpi=300, bbox_inches='tight')
 
     if plot:
         plt.show()
@@ -347,15 +339,54 @@ def plot_prob_map(week_idx):
     fig, [ax1, ax2] = plt.subplots(1, 2, figsize=(20, 10))
     df_muni.plot(ax=ax1, column='HTinc',
                  cmap='viridis',
-                 legend=True, figsize=(10, 10), legend_kwds={'label': "Incidência /100.000 hab."})
+                 legend=True, figsize=(10, 10), legend_kwds={'label': "Incidência /100.000 hab.", 
+                             "shrink":.55})
     df_muni.plot(ax=ax2, column='prob_color',
                  cmap='coolwarm', vmin=-100, vmax=100,
                  legend=True, figsize=(10, 10),
-                 legend_kwds={'label': "Probabilidade (%)"})
+                 legend_kwds={'label': "Probabilidade (%)", 
+                             "shrink":.55})
     ax2.set_axis_off()
     ax1.set_axis_off()
     ax2.set_title('Previsão probabilística na semana de ' + str(dates[week_idx])[:10])
     ax1.set_title('Limiar superior de Incidência na semana de ' + str(dates[week_idx])[:10])
-    ax2.text(0.1, 0, 'Regiões em cinza, representam previsão compatível com a mediana histórica\n Azul: abaixo do limiar inferior\n Vermelho: acima do limiar superior',
+    ax2.text(0.1, -0.02, 'Regiões em cinza, representam previsão compatível com a mediana histórica\n Azul: abaixo do limiar inferior\n Vermelho: acima do limiar superior',
              transform=ax2.transAxes, fontsize='x-small')
-    plt.savefig(f'../plots/prob_map_{dates[week_idx]}.png', dpi=300, bbox_inches='tight')
+    
+    plt.subplots_adjust(wspace = 0.0)
+    plt.savefig(f'./plots/prob_map_{dates[week_idx]}.png', dpi=300, bbox_inches='tight')
+
+
+
+def apply_forecast_state(state, ini_date, end_date, look_back, predict_n, filename, model_name, gen_fig = True):
+    # (city, ini_date = None, end_date = None, look_back = 4, predict_n = 4, filename = filename
+    X_for, factor = get_nn_data_for(state,
+                                    ini_date=ini_date, end_date=end_date,
+                                    look_back=look_back,
+                                    predict_n=predict_n,
+                                    filename=filename
+                                    )
+    # print(X_for.shape)
+    model = keras.models.load_model(f'../saved_models/lstm/{model_name}.keras', compile=False)
+    
+    pred = evaluate(model, X_for, batch_size=1)
+
+    df_pred = pd.DataFrame(np.percentile(pred, 50, axis=2)) * factor
+    df_pred2_5 = pd.DataFrame(np.percentile(pred, 2.5, axis=2)) * factor
+    df_pred97_5 = pd.DataFrame(np.percentile(pred, 97.5, axis=2)) * factor
+    df_pred25 = pd.DataFrame(np.percentile(pred, 25, axis=2)) * factor
+    df_pred75 = pd.DataFrame(np.percentile(pred, 75, axis=2)) * factor
+
+    df = create_df_for(end_date, predict_n, df_pred, df_pred2_5, df_pred25, df_pred75, df_pred97_5)
+
+    df['state'] = state
+
+    df.to_csv(f'./forecast_tables/forecast_{state}.csv.gz')
+
+    if gen_fig: 
+
+        plot_for( filename = filename, region = state, df_for= df, ini_date='2023-01-01', plot = False)
+
+    return df
+
+
