@@ -8,7 +8,7 @@ import tensorflow.keras as keras
 from datetime import datetime, timedelta, date
 import epiweeks
 import geopandas as gpd
-
+from flexitext import flexitext
 sys.path.append('../')
 from lstm import evaluate
 from preprocessing import normalize_data
@@ -319,7 +319,7 @@ def apply_forecast_macro(macro, ini_date, end_date, look_back, predict_n, filena
 
 def plot_prob_map(week_idx):
     # loading all macro forcasts on a single dataframe
-    for i, m in enumerate(glob.glob('./forecast_tables/forecast_*.csv.gz')):
+    for i, m in enumerate(glob.glob('./forecast_tables/forecast_[0-9][0-9][0-9][0-9].csv.gz')):
         if i == 0:
             df = pd.read_csv(m)
             dates = df.date.unique()
@@ -350,16 +350,91 @@ def plot_prob_map(week_idx):
     ax1.set_axis_off()
     ax2.set_title('Previsão probabilística na semana de ' + str(dates[week_idx])[:10])
     ax1.set_title('Limiar superior de Incidência na semana de ' + str(dates[week_idx])[:10])
-    ax2.text(0.1, -0.02, 'Regiões em cinza, representam previsão compatível com a mediana histórica\n Azul: abaixo do limiar inferior\n Vermelho: acima do limiar superior',
-             transform=ax2.transAxes, fontsize='x-small')
+
+    df_states = gpd.read_file('../states.gpkg')
+
+    #df_states = df_states.dropna()
+    df_states.drop(['id'], axis =1, inplace = True)
+    df_states['SIGLA'] = df_states['codarea'].astype(int).replace(code_to_state)
+
+    df_states.boundary.plot(ax =ax1,color = 'black')
+    df_states.boundary.plot(ax =ax2,color = 'black')
+
+    text = "<size:12> <color:royalblue, weight:bold>Azul</>: abaixo do limiar inferior \n <color:crimson, weight:bold>Vermelho</>: acima do limiar superior \n Cinza: compatível com a mediana \n histórica </>"
+    flexitext(0.16, 0.255, text, ha="center")
+
+    #ax2.text(0.1, -0.02, 'Regiões em cinza, representam previsão compatível com a mediana histórica\n Azul: abaixo do limiar inferior\n Vermelho: acima do limiar superior',
+     #        transform=ax2.transAxes, fontsize='x-small')
     
     plt.subplots_adjust(wspace = 0.0)
     plt.savefig(f'./plots/prob_map_{dates[week_idx]}.png', dpi=300, bbox_inches='tight')
 
+code_to_state = {33: 'RJ', 32: 'ES', 41: 'PR', 23: 'CE', 21: 'MA',
+ 31: 'MG', 42: 'SC', 26: 'PE', 25: 'PB', 24: 'RN', 22: 'PI', 27: 'AL',
+ 28: 'SE', 35: 'SP', 43: 'RS', 15: 'PA', 16: 'AP', 14: 'RR',  11: 'RO',
+ 13: 'AM', 12: 'AC', 51: 'MT', 50: 'MS', 52: 'GO', 17: 'TO', 53: 'DF',
+ 29: 'BA'}
+
+def plot_prob_map_states(week_idx):
+    # loading all macro forcasts on a single dataframe
+    for i, m in enumerate(code_to_state.values()):
+        if i == 0:
+            df = pd.read_csv(f'./forecast_tables/forecast_{m}.csv.gz', index_col = 'Unnamed: 0')
+            dates = df.date.unique()
+        else:
+            df = pd.concat([df, pd.read_csv(f'./forecast_tables/forecast_{m}.csv.gz',  index_col = 'Unnamed: 0')])
+
+    df.prob_low = -df.prob_low
+    df['prob_color'] = df.apply(lambda x: x.prob_low if abs(x.prob_low) > abs(x.prob_high) else x.prob_high, axis=1)
+    df['prob_color'] = df.prob_color.apply(lambda x: 0 if abs(x) < 50 else x)
+    
+    df_states = gpd.read_file('../states.gpkg')
+
+    #df_states = df_states.dropna()
+    df_states.drop(['id'], axis =1, inplace = True)
+    df_states['SIGLA'] = df_states['codarea'].astype(int).replace(code_to_state)
+    
+    df_states = df_states.merge(df[df.date == dates[week_idx]], left_on='SIGLA', right_on='state', how='left')
+
+
+    fig, [ax1, ax2] = plt.subplots(1, 2, figsize=(20, 10))
+    df_states.plot(ax=ax1, column='HTinc',
+                 cmap='viridis',
+                 legend=True, figsize=(10, 10), legend_kwds={'label': "Incidência /100.000 hab.",
+                                                             "shrink":.55})
+    df_states.plot(ax=ax2, column='prob_color',
+                 cmap='coolwarm', vmin=-100, vmax=100,
+                 legend=True, figsize=(10, 10),
+                 legend_kwds={'label': "Probabilidade (%)",
+                              #'ticks': [100, 50, 0, 50, 100], 
+                             "shrink":.55})
+    
+
+    ax2.set_axis_off()
+    ax1.set_axis_off()
+    ax2.set_title('Previsão probabilística na semana de ' + str(dates[week_idx])[:10], fontsize = 16)
+    ax1.set_title('Limiar superior de Incidência na semana de ' + str(dates[week_idx])[:10], fontsize = 16)
+    
+    
+    text = "<size:12> <color:royalblue, weight:bold>Azul</>: abaixo do limiar inferior \n <color:crimson, weight:bold>Vermelho</>: acima do limiar superior \n Cinza: compatível com a mediana \n histórica </>"
+    flexitext(0.16, 0.255, text, ha="center")
+
+    df_states.boundary.plot(ax =ax1,color = 'black')
+    df_states.boundary.plot(ax =ax2,color = 'black')
+
+    #ax2.text(0.1, -0.02, 'Regiões em cinza, representam previsão compatível com a mediana histórica\n Azul: abaixo do limiar inferior\n Vermelho: acima do limiar superior',
+             #transform=ax2.transAxes, fontsize='x-small')
+        
+    
+    plt.subplots_adjust(wspace = 0.0)
+    plt.savefig(f'./plots/prob_map_states_{dates[week_idx]}.png', dpi=300, bbox_inches='tight')
 
 
 def apply_forecast_state(state, ini_date, end_date, look_back, predict_n, filename, model_name, gen_fig = True):
     # (city, ini_date = None, end_date = None, look_back = 4, predict_n = 4, filename = filename
+    
+    thresholds = pd.read_csv('../typical_inc_curves_uf.csv')
+
     X_for, factor = get_nn_data_for(state,
                                     ini_date=ini_date, end_date=end_date,
                                     look_back=look_back,
@@ -380,6 +455,33 @@ def apply_forecast_state(state, ini_date, end_date, look_back, predict_n, filena
     df = create_df_for(end_date, predict_n, df_pred, df_pred2_5, df_pred25, df_pred75, df_pred97_5)
 
     df['state'] = state
+    
+    prob_high = []
+    prob_low = []
+    HTs = []
+    LTs = []
+    HTinc = []
+    LTinc = []
+
+    for w, dt in enumerate(df.date):
+        values = (pred[:, w, :] * factor).reshape(-1)
+        SE = epiweeks.Week.fromdate(dt).week
+        ht = thresholds[(thresholds.SE == SE) & (thresholds.UF_id == state)].HighCases.values[0]
+        lt = thresholds[(thresholds.SE == SE) & (thresholds.UF_id == state)].LowCases.values[0]
+        htinc = thresholds[(thresholds.SE == SE) & (thresholds.UF_id ==state)].High.values[0]
+        ltinc = thresholds[(thresholds.SE == SE) & (thresholds.UF_id == state)].Low.values[0]
+        prob_high.append(100 - percentileofscore(values, ht))
+        prob_low.append(percentileofscore(values, lt))
+        HTs.append(ht)
+        LTs.append(lt)
+        HTinc.append(htinc)
+        LTinc.append(ltinc)
+    df['prob_high'] = prob_high
+    df['prob_low'] = prob_low
+    df['HT'] = HTs
+    df['LT'] = LTs
+    df['HTinc'] = HTinc
+    df['LTinc'] = LTinc
 
     df.to_csv(f'./forecast_tables/forecast_{state}.csv.gz')
 
