@@ -25,6 +25,98 @@ tf.config.optimizer.set_jit("autoclustering")
 
 # ==============================================================
 
+
+def get_slope(Y): 
+     
+    X = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
+
+    # Calculando a média de X e Y
+    mean_X = tf.reduce_mean(X)
+    mean_Y = tf.reduce_mean(Y)
+
+    # Calculando a inclinação (slope) da reta de regressão
+    numerator = tf.reduce_sum((X - mean_X) * (Y - mean_Y))
+    denominator = tf.reduce_sum((X - mean_X) ** 2)
+
+    slope = numerator / denominator
+    
+    return slope
+
+def custom_loss_msle(p = 1):
+    """
+    :param p: weight given to a slice of the data when the function is applied. 
+
+    """
+    
+    def my_loss_msle(y_true, y_pred):
+        """
+        :param y_true: 
+        :param y_pred: 
+        """
+
+        def f1(): 
+            
+            loss = tf.math.log(tf.math.add(y_true, 1)/ tf.math.add(y_pred, 1))
+    
+            loss = tf.square(loss)
+        
+            return tf.multiply(loss, p) 
+        
+        def f2(): 
+            
+            loss = tf.math.log(tf.math.add(y_true, 1)/ tf.math.add(y_pred, 1))
+    
+            loss = tf.square(loss)
+        
+            return loss
+
+        msle = tf.cond(tf.less(tf.gather(y_true, 0)[1],tf.gather(y_true, 0)[8]) , 
+                                     true_fn = f1,
+                                     false_fn = f2 )
+
+        return tf.reduce_mean(msle) 
+    
+    return my_loss_msle 
+
+
+def custom_loss_msle_slope(p = 1, threshold = 5.0):
+    """
+    
+    The weight p is applied when the slope of the data is above a threshold.
+    :param p: weight given to a slice of the data when the function is applied. 
+
+    """
+    
+    def my_loss_msle(y_true, y_pred):
+        """
+        :param y_true: 
+        :param y_pred: 
+        """
+
+        def f1(): 
+            
+            loss = tf.math.log(tf.math.add(y_true, 1)/ tf.math.add(y_pred, 1))
+    
+            loss = tf.square(loss)
+        
+            return tf.multiply(loss, p) 
+        
+        def f2(): 
+            
+            loss = tf.math.log(tf.math.add(y_true, 1)/ tf.math.add(y_pred, 1))
+    
+            loss = tf.square(loss)
+        
+            return loss
+
+        msle = tf.cond(tf.less(tf.constant(threshold), get_slope(y_true)) , 
+                                     true_fn = f1,
+                                     false_fn = f2 )
+
+        return tf.reduce_mean(msle) 
+    
+    return my_loss_msle 
+
 def evaluate(model, Xdata, batch_size, uncertainty=True):
     """
     Function to make the predictions of the model trained 

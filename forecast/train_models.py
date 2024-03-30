@@ -20,6 +20,7 @@ def train_dl_model(city, doenca='dengue', end_date_train='2022-11-01', ratio=Non
                    ini_date=TRAIN_FROM,
                    plot=True, lr=0.001, filename_data=f'../data/dengue.csv', patience=50, min_delta=0.01,
                    label=LOSS,
+                   loss= LOSS, 
                    look_back=LOOK_BACK, predict_n=PREDICT_N, hidden=HIDDEN, l1=L1, l2=L2, batch_size=BATCH_SIZE,
                    epochs=EPOCHS):
     df = pd.read_csv(filename_data, index_col='Unnamed: 0', nrows = 1)
@@ -27,7 +28,7 @@ def train_dl_model(city, doenca='dengue', end_date_train='2022-11-01', ratio=Non
     feat = df.shape[1]
 
     model = build_model(l1=l1, l2=l2, hidden=hidden, features=feat, predict_n=predict_n, look_back=look_back,
-                        batch_size=batch_size, loss=LOSS, lr=lr)
+                        batch_size=batch_size, loss=loss, lr=lr)
 
     model, hist = train_model(model, city, doenca=doenca, epochs=epochs, end_train_date=end_date_train,
                               ini_date=ini_date,
@@ -37,4 +38,4 @@ def train_dl_model(city, doenca='dengue', end_date_train='2022-11-01', ratio=Non
                               filename=filename_data, verbose=1, patience=patience, min_delta=min_delta)
 
     if plot:
-        plot_loss(hist, title=F'Model loss - MSLE - {city}')
+        plot_loss(hist, title=F'Model loss - {city}')
